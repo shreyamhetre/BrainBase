@@ -1,4 +1,4 @@
-# GitLab Company Brain — Project Plan
+# Knowhere: GitLab Company Brain — Project Plan
 
 Oct 3, 2026 · @Shreya Mhetre
 

@@ -1,89 +1,253 @@
-# GitLab Company Brain (unofficial)
+<p align="center">
+  <img src="docs/assets/banner.svg" alt="Knowhere: one brain across your company's tools" width="100%">
+</p>
 
-A learning project: one chat interface that answers questions about GitLab from its public handbook, docs and issues, plus synthetic Slack, Notion and Jira data, with cited answers and role-based permissions.
+<p align="center">
+  <b>Ask anything about the company. Get a cited answer from the right tool, filtered by who you are.</b>
+</p>
 
-Not affiliated with or endorsed by GitLab.
+<p align="center">
+  <img src="https://img.shields.io/badge/status-in%20progress-f59e0b?style=for-the-badge" alt="Status: in progress">
+  <img src="https://img.shields.io/badge/python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.11+">
+  <img src="https://img.shields.io/badge/postgres-18-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" alt="Postgres 18">
+  <img src="https://img.shields.io/badge/pgvector-0.8.7-7c3aed?style=for-the-badge" alt="pgvector 0.8.7">
+</p>
 
-**Status:** in progress. Database setup is done; the RAG backend is next. See [docs/steps.md](docs/steps.md).
+<p align="center">
+  <a href="#-how-it-works">How it works</a> ·
+  <a href="#-tech-stack">Tech stack</a> ·
+  <a href="#-getting-started">Getting started</a> ·
+  <a href="#-roadmap">Roadmap</a> ·
+  <a href="docs/project-plan.md">Full plan</a>
+</p>
 
-- Plan: [docs/project-plan.md](docs/project-plan.md)
-- Progress: [docs/steps.md](docs/steps.md)
+---
 
-## How it works
+## 🌌 What is Knowhere?
 
-The brain has two halves: ingestion prepares all content ahead of time, and the query path runs for every question.
+Knowhere is a **company brain**: one chat interface over everything a company knows, spread across its handbook, docs, issues, meetings, Slack, Drive and Jira.
+
+It's built around GitLab, a ~2,000-person remote company, using its **real public handbook, docs and issues** plus **synthetic Slack, Notion and Jira data** that references the real content, so it all feels like one company.
+
+> [!NOTE]
+> Knowhere is an unofficial learning project. It is not affiliated with or endorsed by GitLab.
+
+## ✨ Features
+
+| | |
+|---|---|
+| 🔎 **Hybrid search** | Vector search for meaning plus keyword search for exact terms, merged with reciprocal rank fusion |
+| 📌 **Cited answers** | Every claim links to the exact source passage it came from |
+| 🔐 **Real permissions** | Each chunk knows who can see it; restricted text never reaches the LLM |
+| ⚖️ **Conflict detection** | When sources disagree, the newer one wins and you're warned |
+| 🙅 **Honest "I don't know"** | Says so when there's no evidence, instead of guessing |
+| 🧑‍💻 **Who knows this?** | Suggests the people with expertise on a topic |
+| ⚡ **Actions through MCP** | Create a Jira ticket, post to Slack or draft a Notion page, after you confirm |
+| 📊 **Measured quality** | An 80-question evaluation set, rerun after every change |
+
+## 🧠 How it works
+
+Knowhere has two halves: **ingestion** prepares all content ahead of time, and the **query path** runs for every question. Postgres is the shared index that connects them.
+
+### 1. Ingestion (runs on a schedule)
+
+```mermaid
+flowchart LR
+    subgraph SRC["📥 Sources"]
+        direction TB
+        H["📘 Handbook"]
+        D["📗 Product docs"]
+        I["🐛 Issues & MRs"]
+        M["🎙️ Meetings"]
+        SL["💬 Slack"]
+        N["📝 Notion / Drive"]
+        J["🎫 Jira"]
+    end
+
+    SRC --> SY["🔄 Sync<br/>new · changed · deleted"]
+    SY --> P["📄 Parse"]
+    P --> C["✂️ Chunk"]
+    C --> MD["🏷️ Metadata +<br/>permissions"]
+    MD --> E["🧮 Embed<br/>BGE-M3"]
+    E --> DB[("🐘 Postgres<br/>pgvector + full-text")]
+
+    classDef src fill:#eef2ff,stroke:#6366f1,color:#1e1b4b
+    classDef step fill:#f5f3ff,stroke:#8b5cf6,color:#2e1065
+    classDef store fill:#7c3aed,stroke:#4c1d95,color:#ffffff
+    class H,D,I,M,SL,N,J src
+    class SY,P,C,MD,E step
+    class DB store
+```
+
+- **Sync** fetches only new or changed content, and removes deleted docs, so stale answers don't pile up.
+- **Metadata + permissions** are copied onto every chunk: source, URL, date, author and which roles can see it.
+
+### 2. Query (runs for every question)
+
+```mermaid
+flowchart TD
+    Q(["🙋 Question + your role"]) --> RW["✏️ Rewrite query"]
+    RW --> EQ["🧮 Embed question<br/>same BGE-M3 model"]
+
+    subgraph PG["🐘 Postgres: one query, permission filter in the WHERE clause"]
+        direction LR
+        V["🧭 Vector search"]
+        K["🔤 Keyword search"]
+    end
+
+    EQ --> V
+    RW --> K
+    V --> RRF["🔀 Merge with RRF"]
+    K --> RRF
+    RRF --> RR["🏅 Rerank<br/>top 50 → top 5<br/>BGE v2-m3"]
+    RR --> LLM["🤖 LLM answer<br/>with citations"]
+    LLM --> A(["💬 Streamed answer<br/>+ sources + freshness"])
+
+    LLM -. "/ticket, /summarize" .-> ACT["⚡ Action card<br/>you confirm"]
+    ACT --> MCP["🔌 MCP servers<br/>Slack · Jira · Notion"]
+
+    LF["📈 Langfuse traces every step"]:::trace
+
+    classDef io fill:#7c3aed,stroke:#4c1d95,color:#ffffff
+    classDef step fill:#f5f3ff,stroke:#8b5cf6,color:#2e1065
+    classDef act fill:#fff7ed,stroke:#f97316,color:#7c2d12
+    classDef trace fill:#ecfeff,stroke:#06b6d4,color:#164e63
+    class Q,A io
+    class RW,EQ,V,K,RRF,RR,LLM step
+    class ACT,MCP act
+```
+
+- **Same embedding model** for chunks and questions, or vector search won't match.
+- **The permission filter runs inside the search**, so restricted chunks are never retrieved in the first place.
+- **RRF** (reciprocal rank fusion) combines the vector and keyword lists by rank, then the **reranker** reads the top 50 closely and keeps the best 5.
+
+## 🛠️ Tech stack
+
+<p align="center">
+  <img src="https://skillicons.dev/icons?i=python,fastapi,postgres,docker,nextjs,ts&theme=dark" alt="Python, FastAPI, Postgres, Docker, Next.js, TypeScript">
+</p>
+
+| Layer | Tool | Why |
+|---|---|---|
+| 🐍 Language | ![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white) | Best RAG ecosystem |
+| 🚀 Backend API | ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white) | Simple, async, streaming |
+| 📄 Parsing | ![Markdown](https://img.shields.io/badge/Markdown-000000?logo=markdown&logoColor=white) ![Docling](https://img.shields.io/badge/Docling-PDFs-555555) | Keeps headings and tables |
+| 🧮 Embeddings | ![Hugging Face](https://img.shields.io/badge/BGE--M3-FFD21E?logo=huggingface&logoColor=black) | Strong, multilingual, free to self-host |
+| 🐘 Vector + keyword DB | ![PostgreSQL](https://img.shields.io/badge/Postgres_18-4169E1?logo=postgresql&logoColor=white) ![pgvector](https://img.shields.io/badge/pgvector-7c3aed) | Vectors, full-text, metadata and users in one database |
+| 🏅 Reranker | ![Hugging Face](https://img.shields.io/badge/BGE_Reranker_v2--m3-FFD21E?logo=huggingface&logoColor=black) | Free, fast, proven baseline |
+| 🤖 LLM | ![OpenAI](https://img.shields.io/badge/GPT--4o_mini-412991?logo=openai&logoColor=white) | Cheap, fast, good at grounded answers |
+| 🕸️ Orchestration | ![LangGraph](https://img.shields.io/badge/LangGraph-1C3C3C?logo=langchain&logoColor=white) | Steps as a graph with state, branching and retries |
+| 🔌 Connectors + actions | ![MCP](https://img.shields.io/badge/MCP-000000?logo=modelcontextprotocol&logoColor=white) | Standard way to give agents tools |
+| ⏰ Background sync | ![APScheduler](https://img.shields.io/badge/APScheduler-555555) | Incremental re-sync of sources |
+| 🖥️ Frontend | ![Next.js](https://img.shields.io/badge/Next.js-000000?logo=nextdotjs&logoColor=white) | Streaming chat and admin console |
+| 📊 Evaluation | ![RAGAS](https://img.shields.io/badge/RAGAS-555555) | Context precision, recall, faithfulness |
+| 📈 Tracing | ![Langfuse](https://img.shields.io/badge/Langfuse-0A0A0A) | Chunks, prompt, tokens, cost and latency per question |
+| 🐳 Packaging | ![Docker](https://img.shields.io/badge/Docker_Compose-2496ED?logo=docker&logoColor=white) | One command to run it all |
+
+### Data sources
+
+| Source | | Type | Tests |
+|---|---|---|---|
+| ![GitLab](https://img.shields.io/badge/Handbook-FC6D26?logo=gitlab&logoColor=white) | 📘 | Real | Policies, onboarding, long docs |
+| ![GitLab](https://img.shields.io/badge/Product_docs-FC6D26?logo=gitlab&logoColor=white) | 📗 | Real | Technical how-to answers |
+| ![GitLab](https://img.shields.io/badge/Issues_&_MRs-FC6D26?logo=gitlab&logoColor=white) | 🐛 | Real | Discussions, decisions, freshness |
+| ![YouTube](https://img.shields.io/badge/Unfiltered_meetings-FF0000?logo=youtube&logoColor=white) | 🎙️ | Real, transcribed | Spoken, messy text |
+| ![Slack](https://img.shields.io/badge/Slack-4A154B?logo=slack&logoColor=white) | 💬 | Synthetic | Chat threads, informal answers |
+| ![Notion](https://img.shields.io/badge/Notion_/_Drive-000000?logo=notion&logoColor=white) | 📝 | Synthetic | Mixed doc types |
+| ![Jira](https://img.shields.io/badge/Jira-0052CC?logo=jira&logoColor=white) | 🎫 | Synthetic | Cross-tool linking |
+
+## 🚀 Getting started
+
+### Prerequisites
+
+- 🐳 [Docker Desktop](https://www.docker.com/products/docker-desktop/). On Windows it needs WSL2 and virtualization enabled in BIOS.
+- 🐍 Python 3.11+
+- 🌿 Git
+- 🔑 An OpenAI API key
+- 🟢 Node.js 20+ (later, for the frontend)
+
+### 1. Create `.env` in the project root
+
+```env
+POSTGRES_USER=your_user        # must not start with "pg_"
+POSTGRES_PASSWORD=your_password
+POSTGRES_DB=company_db
+POSTGRES_PORT=5432
+DATABASE_URL=postgresql://your_user:your_password@localhost:5432/company_db
+
+OPENAI_API_KEY=
+```
+
+### 2. Start Postgres with pgvector
+
+```bash
+docker compose up -d
+```
+
+> [!TIP]
+> The database user, password and name are created on the **first start only**. Data lives in a Docker volume and survives restarts; `docker compose down -v` deletes it.
+
+## 🗺️ Roadmap
+
+| | Step | |
+|---|---|---|
+| 1 | 🐘 Project setup, Postgres + pgvector in Docker | ✅ |
+| 2 | 📥 Ingest the handbook: parse, chunk, embed, store | ⏳ |
+| 3 | 🔎 Query path: hybrid search, RRF, rerank, cited answers | |
+| 4 | 📊 Evaluation set + Langfuse tracing | |
+| 5 | 📗 Add product docs and issues | |
+| 6 | 💬 Synthetic Slack, Notion, Jira + role-based permissions | |
+| 7 | 🖥️ Next.js chat and admin console | |
+| 8 | ⚡ MCP actions and stretch goals | |
+
+Detailed progress: [docs/steps.md](docs/steps.md)
+
+## 📊 Evaluation
+
+Quality is measured, not guessed: an 80-question test set covering handbook policy, engineering process, cross-source questions, expertise, conflicting sources, permissions and questions with no answer.
+
+| Metric | What it checks |
+|---|---|
+| 🎯 Hit rate @5 | The right chunk is in the top 5 results |
+| 🥇 MRR | How high the right chunk ranks |
+| ✅ Faithfulness | The answer sticks to its sources |
+| 📌 Citation accuracy | Cited passages actually support the claim |
+| 🔐 Permission leaks | Must stay at **zero** |
+| ⏱️ Latency | Median and p95 time to first token |
+
+## 📁 Project structure
 
 ```
-INGESTION (runs ahead of time, on a schedule)
-  connector sync (new/changed/deleted only) → parse → chunk
-  → attach metadata + permissions → embed (BGE-M3)
-  → Postgres (pgvector + full-text + metadata + permissions)
-
-QUERY (runs for every question)
-  question → rewrite → embed question (BGE-M3)
-  → hybrid search (vector + keyword, permission filter in the same query)
-  → merge with RRF → rerank top 50 → top 5 (BGE v2-m3)
-  → LLM answer with citations → stream to UI
-  (every step traced in Langfuse)
+Company_Brain/
+├── backend/
+│   ├── app/
+│   │   ├── api/           HTTP routes
+│   │   ├── ingestion/     sync, parse, chunk, embed
+│   │   ├── retrieval/     hybrid search, RRF, rerank, permission filter
+│   │   ├── generation/    prompts, LLM calls, citations
+│   │   └── db/            schema and database access
+│   └── tests/
+├── frontend/              Next.js chat and admin console (later)
+├── db/init/               SQL run on first database start
+├── data/
+│   ├── raw/               cloned sources (git-ignored)
+│   └── synthetic/         generated Slack / Notion / Jira data
+├── eval/                  evaluation questions and results
+├── scripts/               one-off helper scripts
+├── docs/                  plan, progress, assets
+└── docker-compose.yml
 ```
 
-- Each chunk carries its source, URL, date and who can see it, so the permission filter runs inside the search query and restricted text never reaches the LLM.
-- Vector search finds passages with similar meaning; keyword search finds exact terms. Reciprocal rank fusion (RRF) merges both lists before reranking.
-- Answers cite the exact passages they used, and say "I couldn't find this" when the evidence is missing.
-
-## Prerequisites
-
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (on Windows it needs WSL2 and virtualization enabled in BIOS)
-- Python 3.11+
-- Git
-- An OpenAI API key
-- Node.js 20+ (later, for the frontend)
-
-## Run the database
-
-1. Create a `.env` file in the project root:
-
-   ```
-   POSTGRES_USER=your_user        # must not start with "pg_"
-   POSTGRES_PASSWORD=your_password
-   POSTGRES_DB=company_db
-   POSTGRES_PORT=5432
-   DATABASE_URL=postgresql://your_user:your_password@localhost:5432/company_db
-
-   OPENAI_API_KEY=
-   ```
-
-2. Start Postgres with pgvector:
-
-   ```
-   docker compose up -d
-   ```
-
-The user, password and database are created on the first start only. Data is kept in a Docker volume and survives restarts; `docker compose down -v` deletes it.
-
-## Folder structure
-
-```
-backend/         FastAPI app (Python)
-  app/api/         HTTP routes
-  app/ingestion/   sync, parse, chunk, embed
-  app/retrieval/   hybrid search, RRF, rerank, permission filter
-  app/generation/  prompts, LLM calls, citations
-  app/db/          schema and database access
-  tests/
-frontend/        Next.js chat and admin console (later)
-db/init/         SQL run on first database start
-data/raw/        cloned sources (git-ignored)
-data/synthetic/  generated Slack / Notion / Jira data
-eval/            evaluation questions and results
-scripts/         one-off helper scripts
-docs/            plan and progress
-```
-
-## Data and licenses
+## 📜 Data and licenses
 
 - **GitLab Handbook** ([gitlab-com/content-sites/handbook](https://gitlab.com/gitlab-com/content-sites/handbook)): the repository is published under the MIT License, Copyright (c) 2011-present GitLab B.V.
 - **GitLab product docs** (`doc/` in [gitlab-org/gitlab](https://gitlab.com/gitlab-org/gitlab)): licensed under [Creative Commons CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
 - **Slack, Notion and Jira data** in this project is synthetic and invented for testing.
 
 Raw GitLab content is downloaded locally into `data/raw/` and is not redistributed in this repository.
+
+---
+
+<p align="center">
+  Built by <a href="https://github.com/shreyamhetre">Shreya Mhetre</a> as a hands-on way to learn RAG, hybrid search, permissions and agents.
+</p>
