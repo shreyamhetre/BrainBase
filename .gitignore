@@ -1,0 +1,31 @@
+# Secrets
+.env
+.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+
+# Raw source data (cloned handbook, docs, transcripts): large, re-downloadable
+data/raw/*
+!data/raw/.gitkeep
+
+# Model caches
+.cache/
+models/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
