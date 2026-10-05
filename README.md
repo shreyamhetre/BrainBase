@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/banner.svg" alt="Knowhere: one brain across your company's tools" width="100%">
+  <img src="docs/assets/gitmore-logo.png" alt="GitMore: one brain across your company's tools" width="480">
 </p>
 
 <p align="center">
@@ -23,14 +23,14 @@
 
 ---
 
-## 🌌 What is Knowhere?
+## 🦊 What is GitMore?
 
-Knowhere is a **company brain**: one chat interface over everything a company knows, spread across its handbook, docs, issues, meetings, Slack, Drive and Jira.
+GitMore is a **company brain**: one chat interface over everything a company knows, spread across its handbook, docs, issues, meetings, Slack, Drive and Jira.
 
 It's built around GitLab, a ~2,000-person remote company, using its **real public handbook, docs and issues** plus **synthetic Slack, Notion and Jira data** that references the real content, so it all feels like one company.
 
 > [!NOTE]
-> Knowhere is an unofficial learning project. It is not affiliated with or endorsed by GitLab.
+> GitMore is an unofficial learning project. It is not affiliated with or endorsed by GitLab.
 
 ## ✨ Features
 
@@ -47,7 +47,7 @@ It's built around GitLab, a ~2,000-person remote company, using its **real publi
 
 ## 🧠 How it works
 
-Knowhere has two halves: **ingestion** prepares all content ahead of time, and the **query path** runs for every question. Postgres is the shared index that connects them.
+GitMore has two halves: **ingestion** prepares all content ahead of time, and the **query path** runs for every question. Postgres is the shared index that connects them.
 
 ### 1. Ingestion (runs on a schedule)
 
@@ -132,7 +132,7 @@ flowchart TD
 | 🐍 Language | ![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white) | Best RAG ecosystem |
 | 🚀 Backend API | ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white) | Simple, async, streaming |
 | 📄 Parsing | ![Markdown](https://img.shields.io/badge/Markdown-000000?logo=markdown&logoColor=white) ![Docling](https://img.shields.io/badge/Docling-PDFs-555555) | Keeps headings and tables |
-| 🧮 Embeddings | ![Hugging Face](https://img.shields.io/badge/BGE--M3-FFD21E?logo=huggingface&logoColor=black) | Strong, multilingual, free to self-host |
+| 🧮 Embeddings | ![Hugging Face](https://img.shields.io/badge/BGE--M3-FFD21E?logo=huggingface&logoColor=black) ![sentence-transformers](https://img.shields.io/badge/sentence--transformers-555555) ![PyTorch](https://img.shields.io/badge/PyTorch_CUDA-EE4C2C?logo=pytorch&logoColor=white) | Strong, multilingual, 8,192-token input, runs on a local GPU |
 | 🐘 Vector + keyword DB | ![PostgreSQL](https://img.shields.io/badge/Postgres_18-4169E1?logo=postgresql&logoColor=white) ![pgvector](https://img.shields.io/badge/pgvector-7c3aed) | Vectors, full-text, metadata and users in one database |
 | 🏅 Reranker | ![Hugging Face](https://img.shields.io/badge/BGE_Reranker_v2--m3-FFD21E?logo=huggingface&logoColor=black) | Free, fast, proven baseline |
 | 🤖 LLM | ![OpenAI](https://img.shields.io/badge/GPT--4o_mini-412991?logo=openai&logoColor=white) | Cheap, fast, good at grounded answers |
@@ -161,7 +161,8 @@ flowchart TD
 ### Prerequisites
 
 - 🐳 [Docker Desktop](https://www.docker.com/products/docker-desktop/). On Windows it needs WSL2 and virtualization enabled in BIOS.
-- 🐍 Python 3.11+
+- 🐍 Python 3.11+ (developed on 3.14)
+- 🎮 An NVIDIA GPU is recommended for embedding (CPU works, much slower)
 - 🌿 Git
 - 🔑 An OpenAI API key
 - 🟢 Node.js 20+ (later, for the frontend)
@@ -169,7 +170,7 @@ flowchart TD
 ### 1. Create `.env` in the project root
 
 ```env
-POSTGRES_USER=your_user        # must not start with "pg_"
+POSTGRES_USER=your_user        
 POSTGRES_PASSWORD=your_password
 POSTGRES_DB=company_db
 POSTGRES_PORT=5432
@@ -186,6 +187,24 @@ docker compose up -d
 
 > [!TIP]
 > The database user, password and name are created on the **first start only**. Data lives in a Docker volume and survives restarts; `docker compose down -v` deletes it.
+
+### 3. Python environment
+
+```bash
+python -m venv .venv
+.venv\Scripts\activate            # Windows
+source .venv/bin/activate         # macOS/Linux
+pip install -r backend/requirements.txt
+```
+
+`requirements.txt` installs the PyTorch build for CUDA 12.8. Without an NVIDIA GPU, remove the first two lines to get the CPU build.
+
+### 4. Create the tables
+
+```bash
+cd backend
+python -m app.db.migrate
+```
 
 ## 🗺️ Roadmap
 
