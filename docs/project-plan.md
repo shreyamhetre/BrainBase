@@ -60,10 +60,13 @@ INGESTION (runs ahead of time, on a schedule)
   → attach metadata + permissions → embed (BGE-M3)
   → Postgres (pgvector + full-text + metadata + permissions)
 
-QUERY (runs for every question)
-  question → rewrite → embed question (BGE-M3)
-  → hybrid search (vector + keyword, permission filter in the same query)
-  → merge with RRF → rerank top 50 → top 5 (BGE v2-m3)
+QUERY (runs for every message)
+  message → LangGraph router: what does this need?
+    knowledge → rewrite → embed question (BGE-M3)
+      → hybrid search (vector + keyword, permission filter in the same query)
+      → merge with RRF → rerank top 50 → top 5 (BGE v2-m3)
+    action    → action card → user confirms → MCP write (ticket · post · page)
+                (uses search results as context when the action needs them)
   → LLM answer with citations (GPT-4o mini or similar) → stream to UI
   (every step traced in Langfuse)
 ```
@@ -75,6 +78,8 @@ QUERY (runs for every question)
 
 **Query**
 
+- **One entry point, router decides:** users ask in plain language; a LangGraph router picks knowledge (RAG), action (MCP) or both, e.g. "Summarize the PTO policy and post it to #hr" searches first, then acts.
+- **MCP for writes only:** all reads come from the indexed, permission-tagged data. Live MCP reads are skipped for now, because admin-connected MCP servers could see more than the user is allowed to.
 - **Embed the question with the same model:** after rewriting, the question is embedded with BGE-M3, the same model used for chunks, or vector search won't match properly.
 - **Permission filter inside the search:** applied as a WHERE condition in the same SQL query as the search, so restricted chunks never reach the LLM.
 - **Merge before reranking:** vector and keyword search return separate lists, combined with reciprocal rank fusion (RRF).
@@ -115,7 +120,7 @@ The app has two screens: a chat for employees and an admin console for you to se
 - Role switcher (Engineer, HR, Manager, Store-level guest) to demo permissions
 - Filters: source, team, date range
 - Upload a file to ask questions about it
-- Slash commands for actions, such as /ticket, /summarize #channel, /who-knows
+- Actions asked in plain language ("create a Jira ticket for this bug"); the router decides. Slash commands such as /ticket or /who-knows are optional shortcuts
 
 **Chat outputs**
 

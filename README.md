@@ -82,11 +82,13 @@ flowchart LR
 - **Sync** fetches only new or changed content, and removes deleted docs, so stale answers don't pile up.
 - **Metadata + permissions** are copied onto every chunk: source, URL, date, author and which roles can see it.
 
-### 2. Query (runs for every question)
+### 2. Query (runs for every message)
 
 ```mermaid
 flowchart TD
-    Q(["🙋 Question + your role"]) --> RW["✏️ Rewrite query"]
+    Q(["🙋 Message + your role"]) --> RT{"🧭 LangGraph router<br/>what does this need?"}
+
+    RT -- "knowledge" --> RW["✏️ Rewrite query"]
     RW --> EQ["🧮 Embed question<br/>same BGE-M3 model"]
 
     subgraph PG["🐘 Postgres: one query, permission filter in the WHERE clause"]
@@ -100,26 +102,33 @@ flowchart TD
     V --> RRF["🔀 Merge with RRF"]
     K --> RRF
     RRF --> RR["🏅 Rerank<br/>top 50 → top 5<br/>BGE v2-m3"]
+    RT -- "action" --> ACT["⚡ Action card<br/>you confirm"]
+    RR -. "context, if the action needs it" .-> ACT
+    ACT --> MCPW["🔌 MCP write<br/>ticket · post · page"]
+
     RR --> LLM["🤖 LLM answer<br/>with citations"]
+    MCPW --> LLM
     LLM --> A(["💬 Streamed answer<br/>+ sources + freshness"])
-
-    LLM -. "/ticket, /summarize" .-> ACT["⚡ Action card<br/>you confirm"]
-    ACT --> MCP["🔌 MCP servers<br/>Slack · Jira · Notion"]
-
-    LF["📈 Langfuse traces every step"]:::trace
 
     classDef io fill:#7c3aed,stroke:#4c1d95,color:#ffffff
     classDef step fill:#f5f3ff,stroke:#8b5cf6,color:#2e1065
+    classDef route fill:#fef9c3,stroke:#ca8a04,color:#422006
     classDef act fill:#fff7ed,stroke:#f97316,color:#7c2d12
-    classDef trace fill:#ecfeff,stroke:#06b6d4,color:#164e63
     class Q,A io
+    class RT route
     class RW,EQ,V,K,RRF,RR,LLM step
-    class ACT,MCP act
+    class ACT,MCPW act
+    style PG fill:#eef2ff,stroke:#6366f1,color:#1e1b4b
 ```
 
+- **The router decides the route**, so users never pick a tool or type a command. One question box for everything.
+- **Knowledge comes from the index through RAG; actions go through MCP.** A single request can use both: "Summarize the PTO policy and post it to #hr" searches first, then acts.
+- **Every action needs your confirmation** before anything is written to Slack, Jira or Notion.
+- **Permissions apply to every answer**: all reads come from indexed, permission-tagged data filtered in SQL. MCP is used only for writes, not for reading live data.
 - **Same embedding model** for chunks and questions, or vector search won't match.
 - **The permission filter runs inside the search**, so restricted chunks are never retrieved in the first place.
 - **RRF** (reciprocal rank fusion) combines the vector and keyword lists by rank, then the **reranker** reads the top 50 closely and keeps the best 5.
+- **Langfuse traces every step**: route chosen, retrieved chunks, prompt, tokens, cost and latency.
 
 ## 🛠️ Tech stack
 
