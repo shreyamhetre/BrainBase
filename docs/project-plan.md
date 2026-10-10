@@ -1,4 +1,4 @@
-# Knowhere: GitLab Company Brain — Project Plan
+# GitMore: GitLab Company Brain — Project Plan
 
 Oct 3, 2026 · @Shreya Mhetre
 
@@ -32,6 +32,16 @@ Start with two real sources (handbook and docs), add issues, then layer in synth
 | Slack | Synthetic | Free workspace, channels filled by an LLM script | Chat threads, informal answers |
 | Notion or Google Drive | Synthetic | Free workspace with meeting notes, plans | Mixed doc types |
 | Jira or Linear | Synthetic | Free project with tickets linked to real issues | Cross-tool linking |
+
+**Which handbook pages are ingested**
+
+The handbook is ~4,200 pages (~10.5M tokens). Dates come from the last year of Git history. Rules live in `backend/app/ingestion/handbook_selection.py`:
+
+- Pages changed in the last year are kept.
+- Core policy sections are kept whatever their age: values, company, people-policies, total-rewards, people-group, hiring, communication, leadership.
+- Design documents: implemented, ongoing, accepted and rejected are kept whatever their age; proposals untouched for over a year are dropped. Each chunk stores the doc's status so a proposal is never presented as how GitLab works.
+
+Result: about 9M tokens, roughly 25,000 chunks.
 
 **Rules for synthetic data**
 
@@ -83,7 +93,7 @@ Everything below is free or has a free tier, and runs on a laptop plus one LLM A
 | Language | Python 3.11+ | Best RAG ecosystem |  |
 | Backend API | FastAPI | Simple, async, streaming support |  |
 | Parsing | Markdown parser, Docling for PDFs |
-| Embeddings | BGE-M3 or an API embedding model | Strong, multilingual, free to self-host | 
+| Embeddings | BGE-M3 (1024 dims), run with sentence-transformers on the local GPU (PyTorch 2.11, CUDA 12.8) | Strong, multilingual, 8,192-token input, free to self-host | 
 | Vector + keyword DB | Postgres 18 with pgvector (Docker image), plus full-text search | One database for vectors, BM25-style search, metadata and users | 
 | Reranker | BGE Reranker v2-m3 | Free, fast, proven baseline | 
 | LLM | Claude or any strong API model | Good at grounded answers with citations | - LLM i am planning to use Gpt 4.0 mini
