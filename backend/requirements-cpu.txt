@@ -1,0 +1,6 @@
+# CPU-only install, for machines without an NVIDIA GPU. Embedding works, but much slower.
+# Windows/Linux get the small CPU build (2.11.0+cpu); macOS gets the standard build.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.11.0
+
+-r requirements-common.txt

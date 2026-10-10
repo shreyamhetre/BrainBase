@@ -1,17 +1,6 @@
-# PyTorch GPU build (CUDA 12.8 works with NVIDIA drivers that support CUDA 12.8+)
+# NVIDIA GPU install. PyTorch build for CUDA 12.8 (needs a driver that supports CUDA 12.8+).
+# No NVIDIA GPU? Use requirements-cpu.txt instead.
 --extra-index-url https://download.pytorch.org/whl/cu128
 torch==2.11.0+cu128
 
-# Embeddings (BGE-M3) and reranker (BGE Reranker v2-m3)
-sentence-transformers>=5.0
-
-# Database
-psycopg[binary]>=3.2
-pgvector>=0.4
-
-# Ingestion
-python-frontmatter>=1.1
-markdown-it-py>=3.0
-
-# Config
-python-dotenv>=1.0
+-r requirements-common.txt

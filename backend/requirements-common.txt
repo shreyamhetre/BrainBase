@@ -1,0 +1,15 @@
+# Shared by requirements.txt (NVIDIA GPU) and requirements-cpu.txt. Don't install this file directly.
+
+# Embeddings (BGE-M3) and reranker (BGE Reranker v2-m3)
+sentence-transformers>=5.0
+
+# Database
+psycopg[binary]>=3.2
+pgvector>=0.4
+
+# Ingestion
+python-frontmatter>=1.1
+markdown-it-py>=3.0
+
+# Config
+python-dotenv>=1.0

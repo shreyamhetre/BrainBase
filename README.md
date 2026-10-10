@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <b>Ask anything about the company. Get a cited answer from the right tool, filtered by who you are.</b>
+  <b>Ask anything about the company. Get a cited answer from across the company's tools, filtered by who you are.</b>
 </p>
 
 <p align="center">
@@ -39,15 +39,16 @@ It's built around GitLab, a ~2,000-person remote company, using its **real publi
 | 🔎 **Hybrid search** | Vector search for meaning plus keyword search for exact terms, merged with reciprocal rank fusion |
 | 📌 **Cited answers** | Every claim links to the exact source passage it came from |
 | 🔐 **Real permissions** | Each chunk knows who can see it; restricted text never reaches the LLM |
+| 🧭 **One question box** | A router decides whether to search, act or ask you to clarify |
 | ⚖️ **Conflict detection** | When sources disagree, the newer one wins and you're warned |
 | 🙅 **Honest "I don't know"** | Says so when there's no evidence, instead of guessing |
 | 🧑‍💻 **Who knows this?** | Suggests the people with expertise on a topic |
 | ⚡ **Actions through MCP** | Create a Jira ticket, post to Slack or draft a Notion page, after you confirm |
-| 📊 **Measured quality** | An 80-question evaluation set, rerun after every change |
+| 📊 **Measured quality** | A 90-question evaluation set, rerun after every change |
 
 ## 🧠 How it works
 
-GitMore has two halves: **ingestion** prepares all content ahead of time, and the **query path** runs for every question. Postgres is the shared index that connects them.
+GitMore has two halves: **ingestion** prepares all content ahead of time, and the **query path** runs for every message. Postgres is the shared index that connects them.
 
 ### 1. Ingestion (runs on a schedule)
 
@@ -105,10 +106,12 @@ flowchart TD
     RT -- "action" --> ACT["⚡ Action card<br/>you confirm"]
     RR -. "context, if the action needs it" .-> ACT
     ACT --> MCPW["🔌 MCP write<br/>ticket · post · page"]
+    RT -- "unclear" --> CL["💭 Ask a<br/>clarifying question"]
 
     RR --> LLM["🤖 LLM answer<br/>with citations"]
     MCPW --> LLM
     LLM --> A(["💬 Streamed answer<br/>+ sources + freshness"])
+    CL --> A
 
     classDef io fill:#7c3aed,stroke:#4c1d95,color:#ffffff
     classDef step fill:#f5f3ff,stroke:#8b5cf6,color:#2e1065
@@ -116,17 +119,17 @@ flowchart TD
     classDef act fill:#fff7ed,stroke:#f97316,color:#7c2d12
     class Q,A io
     class RT route
-    class RW,EQ,V,K,RRF,RR,LLM step
+    class RW,EQ,V,K,RRF,RR,LLM,CL step
     class ACT,MCPW act
     style PG fill:#eef2ff,stroke:#6366f1,color:#1e1b4b
 ```
 
 - **The router decides the route**, so users never pick a tool or type a command. One question box for everything.
 - **Knowledge comes from the index through RAG; actions go through MCP.** A single request can use both: "Summarize the PTO policy and post it to #hr" searches first, then acts.
+- **Unclear messages get a clarifying question** instead of a search, such as greetings or vague requests.
 - **Every action needs your confirmation** before anything is written to Slack, Jira or Notion.
-- **Permissions apply to every answer**: all reads come from indexed, permission-tagged data filtered in SQL. MCP is used only for writes, not for reading live data.
+- **Permissions apply to every answer:** all reads come from indexed, permission-tagged data, filtered inside the same SQL query as the search, so restricted chunks are never retrieved. MCP is used only for writes, not for reading live data.
 - **Same embedding model** for chunks and questions, or vector search won't match.
-- **The permission filter runs inside the search**, so restricted chunks are never retrieved in the first place.
 - **RRF** (reciprocal rank fusion) combines the vector and keyword lists by rank, then the **reranker** reads the top 50 closely and keeps the best 5.
 - **Langfuse traces every step**: route chosen, retrieved chunks, prompt, tokens, cost and latency.
 
@@ -146,7 +149,7 @@ flowchart TD
 | 🏅 Reranker | ![Hugging Face](https://img.shields.io/badge/BGE_Reranker_v2--m3-FFD21E?logo=huggingface&logoColor=black) | Free, fast, proven baseline |
 | 🤖 LLM | ![OpenAI](https://img.shields.io/badge/GPT--4o_mini-412991?logo=openai&logoColor=white) | Cheap, fast, good at grounded answers |
 | 🕸️ Orchestration | ![LangGraph](https://img.shields.io/badge/LangGraph-1C3C3C?logo=langchain&logoColor=white) | Steps as a graph with state, branching and retries |
-| 🔌 Connectors + actions | ![MCP](https://img.shields.io/badge/MCP-000000?logo=modelcontextprotocol&logoColor=white) | Standard way to give agents tools |
+| 🔌 Connectors + actions | ![MCP](https://img.shields.io/badge/MCP-000000?logo=modelcontextprotocol&logoColor=white) | Standard way to give agents tools; used for writes only |
 | ⏰ Background sync | ![APScheduler](https://img.shields.io/badge/APScheduler-555555) | Incremental re-sync of sources |
 | 🖥️ Frontend | ![Next.js](https://img.shields.io/badge/Next.js-000000?logo=nextdotjs&logoColor=white) | Streaming chat and admin console |
 | 📊 Evaluation | ![RAGAS](https://img.shields.io/badge/RAGAS-555555) | Context precision, recall, faithfulness |
@@ -176,17 +179,28 @@ flowchart TD
 - 🔑 An OpenAI API key
 - 🟢 Node.js 20+ (later, for the frontend)
 
-### 1. Create `.env` in the project root
+### 1. Create `.env` from the example
+
+```bash
+cp .env.example .env        # macOS/Linux
+copy .env.example .env      # Windows
+```
+
+Then fill in your values:
 
 ```env
-POSTGRES_USER=your_user        
+POSTGRES_USER=your_user
 POSTGRES_PASSWORD=your_password
 POSTGRES_DB=company_db
 POSTGRES_PORT=5432
 DATABASE_URL=postgresql://your_user:your_password@localhost:5432/company_db
 
 OPENAI_API_KEY=
+LLM_BASE_URL=https://api.openai.com/v1
+LLM_MODEL=gpt-4o-mini
 ```
+
+`.env` is git-ignored, so your keys never get committed. Changing `LLM_MODEL` or `LLM_BASE_URL` switches models with no code changes.
 
 ### 2. Start Postgres with pgvector
 
@@ -203,10 +217,9 @@ docker compose up -d
 python -m venv .venv
 .venv\Scripts\activate            # Windows
 source .venv/bin/activate         # macOS/Linux
-pip install -r backend/requirements.txt
+pip install -r backend/requirements.txt        # NVIDIA GPU (CUDA 12.8)
+pip install -r backend/requirements-cpu.txt    # no NVIDIA GPU
 ```
-
-`requirements.txt` installs the PyTorch build for CUDA 12.8. Without an NVIDIA GPU, remove the first two lines to get the CPU build.
 
 ### 4. Create the tables
 
@@ -220,19 +233,19 @@ python -m app.db.migrate
 | | Step | |
 |---|---|---|
 | 1 | 🐘 Project setup, Postgres + pgvector in Docker | ✅ |
-| 2 | 📥 Ingest the handbook: parse, chunk, embed, store | ⏳ |
-| 3 | 🔎 Query path: hybrid search, RRF, rerank, cited answers | |
-| 4 | 📊 Evaluation set + Langfuse tracing | |
+| 2 | 📥 Ingest the handbook: parse, chunk, embed, store (permission columns included, default everyone) | ⏳ |
+| 3 | 🔎 Query path: LangGraph knowledge route, hybrid search, RRF, rerank, cited answers, first 20 eval questions, Langfuse tracing | |
+| 4 | 📊 Full evaluation set and baseline scores. **Gate:** core RAG passes before new sources are added | |
 | 5 | 📗 Add product docs and issues | |
-| 6 | 💬 Synthetic Slack, Notion, Jira + role-based permissions | |
+| 6 | 💬 Synthetic Slack, Notion, Jira through connector sync + role-based permissions enforced | |
 | 7 | 🖥️ Next.js chat and admin console | |
-| 8 | ⚡ MCP actions and stretch goals | |
+| 8 | ⚡ Action route (MCP writes with confirmation), clarify route and stretch goals | |
 
 Detailed progress: [docs/steps.md](docs/steps.md)
 
 ## 📊 Evaluation
 
-Quality is measured, not guessed: an 80-question test set covering handbook policy, engineering process, cross-source questions, expertise, conflicting sources, permissions and questions with no answer.
+Quality is measured, not guessed: a 90-question test set covering handbook policy, engineering process, cross-source questions, expertise, conflicting sources, routing, permissions and questions with no answer.
 
 | Metric | What it checks |
 |---|---|
@@ -240,6 +253,7 @@ Quality is measured, not guessed: an 80-question test set covering handbook poli
 | 🥇 MRR | How high the right chunk ranks |
 | ✅ Faithfulness | The answer sticks to its sources |
 | 📌 Citation accuracy | Cited passages actually support the claim |
+| 🧭 Routing accuracy | Messages go to the right route: knowledge, action, both or clarify |
 | 🔐 Permission leaks | Must stay at **zero** |
 | ⏱️ Latency | Median and p95 time to first token |
 
@@ -263,6 +277,7 @@ Company_Brain/
 ├── eval/                  evaluation questions and results
 ├── scripts/               one-off helper scripts
 ├── docs/                  plan, progress, assets
+├── .env.example           template for your .env
 └── docker-compose.yml
 ```
 

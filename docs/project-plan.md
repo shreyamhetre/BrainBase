@@ -1,10 +1,10 @@
 # GitMore: GitLab Company Brain — Project Plan
 
-Oct 3, 2026 · @Shreya Mhetre
+By Shreya Mhetre
 
 ## Overview
 
-We will build a working company brain for GitLab in 8 weeks: one chat interface that answers employee questions from the real public handbook, docs and issues, plus synthetic Slack, Notion and Jira data, with cited answers and role-based permissions.
+We will build a working company brain for GitLab: one chat interface that answers employee questions from the real public handbook, docs and issues, plus synthetic Slack, Notion and Jira data, with cited answers and role-based permissions.
 
 **Problem it solves.** GitLab is a \~2,000-person remote company. Knowledge is spread across a huge handbook, thousands of issues, chat threads and meetings. People waste time searching, ask the same questions repeatedly and miss decisions. The brain gives one place to ask, with trustworthy cited answers that respect who can see what.
 
@@ -12,8 +12,8 @@ We will build a working company brain for GitLab in 8 weeks: one chat interface 
 
 - How ingestion, chunking, embeddings and indexing work end to end
 - How hybrid search, reranking and citations improve answer quality
-- How connectors sync live tools and map permissions
-- How to route between document search and structured queries
+- How connectors sync tools into the index and carry their permissions
+- How a router decides between search, actions and clarifying questions
 - How an agent takes actions in tools through MCP
 - How to measure quality with an evaluation set
 
@@ -21,7 +21,7 @@ This is a learning project: GitLab data is used as public, openly licensed conte
 
 ## Data plan
 
-Start with two real sources (handbook and docs), add issues, then layer in synthetic tools that reference the real content so everything feels like one company.
+Start with one real source (the handbook), add docs and issues, then layer in synthetic tools that reference the real content so everything feels like one company.
 
 | Source | Real or synthetic | How to get it | Tests |
 | --- | --- | --- | --- |
@@ -52,7 +52,7 @@ Result: about 9M tokens, roughly 25,000 chunks.
 
 ## Architecture
 
-The brain has two halves: an ingestion pipeline that prepares all content ahead of time, and a fast query path that runs for each question.
+The brain has two halves: an ingestion pipeline that prepares all content ahead of time, and a fast query path that runs for each message.
 
 ```
 INGESTION (runs ahead of time, on a schedule)
@@ -65,9 +65,12 @@ QUERY (runs for every message)
     knowledge → rewrite → embed question (BGE-M3)
       → hybrid search (vector + keyword, permission filter in the same query)
       → merge with RRF → rerank top 50 → top 5 (BGE v2-m3)
+      → LLM answer with citations (GPT-4o mini)
     action    → action card → user confirms → MCP write (ticket · post · page)
                 (uses search results as context when the action needs them)
-  → LLM answer with citations (GPT-4o mini or similar) → stream to UI
+      → LLM reply with the result (e.g. "Ticket ENG-123 created")
+    unclear   → ask a clarifying question (greetings, vague requests)
+  → stream to UI
   (every step traced in Langfuse)
 ```
 
@@ -78,14 +81,14 @@ QUERY (runs for every message)
 
 **Query**
 
-- **One entry point, router decides:** users ask in plain language; a LangGraph router picks knowledge (RAG), action (MCP) or both, e.g. "Summarize the PTO policy and post it to #hr" searches first, then acts.
+- **One entry point, router decides:** users ask in plain language; a LangGraph router picks knowledge (RAG), action (MCP), both, or a clarifying question. For example, "Summarize the PTO policy and post it to #hr" searches first, then acts.
 - **MCP for writes only:** all reads come from the indexed, permission-tagged data. Live MCP reads are skipped for now, because admin-connected MCP servers could see more than the user is allowed to.
 - **Embed the question with the same model:** after rewriting, the question is embedded with BGE-M3, the same model used for chunks, or vector search won't match properly.
 - **Permission filter inside the search:** applied as a WHERE condition in the same SQL query as the search, so restricted chunks never reach the LLM.
 - **Merge before reranking:** vector and keyword search return separate lists, combined with reciprocal rank fusion (RRF).
 - **Rerank a fixed number:** for example, top 50 in, top 5 out.
-- **LLM:** GPT-4o mini for answers; check it is still offered when starting, since small models get replaced often. Any current small, fast model works; the design doesn't depend on it.
-- **Tracing:** Langfuse records every step of the query path.
+- **LLM:** GPT-4o mini through the official OpenAI API. The model name and base URL live in `.env`, so switching models is a config change, not a code change.
+- **Tracing:** Langfuse records every step of the query path, including the route chosen.
 
 The Index (Postgres) is the shared store that connects both halves.
 
@@ -93,31 +96,31 @@ The Index (Postgres) is the shared store that connects both halves.
 
 Everything below is free or has a free tier, and runs on a laptop plus one LLM API key.
 
-| Layer | Pick | Why |  |
-| --- | --- | --- | --- |
-| Language | Python 3.11+ | Best RAG ecosystem |  |
-| Backend API | FastAPI | Simple, async, streaming support |  |
-| Parsing | Markdown parser, Docling for PDFs |
-| Embeddings | BGE-M3 (1024 dims), run with sentence-transformers on the local GPU (PyTorch 2.11, CUDA 12.8) | Strong, multilingual, 8,192-token input, free to self-host | 
-| Vector + keyword DB | Postgres 18 with pgvector (Docker image), plus full-text search | One database for vectors, BM25-style search, metadata and users | 
-| Reranker | BGE Reranker v2-m3 | Free, fast, proven baseline | 
-| LLM | Claude or any strong API model | Good at grounded answers with citations | - LLM i am planning to use Gpt 4.0 mini
+| Layer | Pick | Why |
+| --- | --- | --- |
+| Language | Python 3.11+ | Best RAG ecosystem |
+| Backend API | FastAPI | Simple, async, streaming support |
+| Parsing | Markdown parser, Docling for PDFs | Keeps headings and tables |
+| Embeddings | BGE-M3 (1024 dims), run with sentence-transformers on the local GPU (PyTorch 2.11, CUDA 12.8) | Strong, multilingual, 8,192-token input, free to self-host |
+| Vector + keyword DB | Postgres 18 with pgvector (Docker image), plus full-text search | One database for vectors, BM25-style search, metadata and users |
+| Reranker | BGE Reranker v2-m3 | Free, fast, proven baseline |
+| LLM | GPT-4o mini (OpenAI API) | Cheap, fast, good at grounded answers |
 | Orchestration | LangGraph | Steps as a graph with shared state, branching and retries; built for agents |
-| Connectors and actions | MCP servers, connected by an admin | Standard way to give agents tools; per-user permissions still enforced at retrieval | 
+| Connectors and actions | MCP servers, connected by an admin, used for writes only | Standard way to give agents tools; reads stay on permission-tagged data |
 | Background sync | A scheduled job (APScheduler or cron) | Incremental re-sync of sources |
-| Frontend | Next.js | Real product feel, streaming chat and admin console | 
+| Frontend | Next.js | Real product feel, streaming chat and admin console |
 | Evaluation | RAGAS plus a custom script | RAG-specific metrics: context precision, recall, faithfulness |
 | Tracing | Langfuse (self-hosted in Docker) | Every step per question: chunks, prompt, tokens, cost, latency |
-- [ ]
+| Packaging | Docker Compose | One command to run it all |
 
-  ## UI: inputs and outputs
+## UI: inputs and outputs
 
 The app has two screens: a chat for employees and an admin console for you to see how the brain works inside.
 
 **Chat inputs**
 
 - Plain-language question box, with follow-up questions in the same thread
-- Role switcher (Engineer, HR, Manager, Store-level guest) to demo permissions
+- Role switcher (Engineer, HR, Manager, Guest) to demo permissions; in a real product the role comes from login, never a dropdown
 - Filters: source, team, date range
 - Upload a file to ask questions about it
 - Actions asked in plain language ("create a Jira ticket for this bug"); the router decides. Slash commands such as /ticket or /who-knows are optional shortcuts
@@ -130,27 +133,37 @@ The app has two screens: a chat for employees and an admin console for you to se
 - Conflict warning when sources disagree, with the newer one preferred
 - Suggested experts for the topic
 - Action cards to confirm before acting: create a Jira ticket, post to Slack, draft a Notion page
+- A clarifying question when the request is unclear
 - Thumbs up or down on every answer, stored for evaluation
 
 **Admin console**
 
 - Connectors: status, last sync time, documents per source
-- Query inspector: for any question, the rewritten query, retrieved chunks with scores, reranked order and final prompt
+- Query inspector: for any question, the route chosen, the rewritten query, retrieved chunks with scores, reranked order and final prompt
 - Permission tester: run one question as two roles and compare results
 - Evaluation dashboard: accuracy and retrieval metrics per test run
 - Latency breakdown: retrieval, reranking, first token, total
 
-## Milestones
+## Roadmap
 
-Eight weeks at roughly 8 to 10 hours a week, with one gate: core RAG must pass the evaluation set before live tools are added.
+Steps run in this order, with no fixed dates. One gate: core RAG must pass the evaluation set before new sources are added.
 
-&#91;embedded content: 8-week milestones · 4 phases, 1 gate\]
+| Step | What gets built | Done when |
+| --- | --- | --- |
+| 1 | Project setup, Postgres + pgvector in Docker | Database runs, tables created |
+| 2 | Ingest the handbook: parse, chunk, embed, store. Permission and metadata columns created now, defaulting to everyone | ~25,000 chunks stored with metadata |
+| 3 | Query path: LangGraph graph with the knowledge route, hybrid search, RRF, rerank, cited answers. First 20 eval questions. Langfuse tracing. Test through a CLI script or FastAPI's /docs page | Questions return cited answers; traces visible |
+| 4 | Full evaluation set and baseline scores. **Gate:** core RAG passes before new sources are added | Baseline metrics recorded |
+| 5 | Add product docs and issues | Cross-source questions pass |
+| 6 | Synthetic Slack, Notion, Jira through connector sync, plus role-based permissions enforced | Permission tests pass with zero leaks |
+| 7 | Next.js chat and admin console | Full demo runs in the browser |
+| 8 | Action route: MCP writes with confirmation, clarify route, then stretch goals | Actions work after user confirms |
 
-If week 3 misses the gate, spend week 4 fixing chunking and retrieval instead of adding sources; everything after builds on retrieval quality.
+If step 4 misses the gate, fix chunking and retrieval before adding sources; everything after builds on retrieval quality.
 
 ## Evaluation
 
-Build a set of 80 test questions in week 1 and rerun it after every change, so each improvement is measured rather than guessed.
+Start with 20 questions in step 3 and grow to the full set of 90 in step 4. Rerun it after every change, so each improvement is measured rather than guessed.
 
 | Category | Count | Example | Pass means |
 | --- | --- | --- | --- |
@@ -159,6 +172,7 @@ Build a set of 80 test questions in week 1 and rerun it after every change, so e
 | Cross-source | 15 | Why was feature X designed this way? | Uses issues plus handbook |
 | Expertise | 10 | Who should I ask about Kubernetes? | Names a plausible owner with evidence |
 | Conflicting or outdated | 10 | What is the current policy on X? | Prefers the newest source, flags the conflict |
+| Routing | 10 | Summarize the PTO policy and post it to #hr | Picks the right route: knowledge, action, both or clarify |
 | Permissions | 5 | An HR-only question asked as an engineer | Refuses or shows nothing restricted |
 | No answer exists | 5 | A made-up policy | Says it doesn't know |
 
@@ -166,8 +180,9 @@ Build a set of 80 test questions in week 1 and rerun it after every change, so e
 
 - Retrieval hit rate at 5: the right chunk is in the top 5 results
 - MRR: how high the right chunk ranks
-- Answer correctness and faithfulness to sources (Ragas or an LLM judge, spot-checked by hand)
+- Answer correctness and faithfulness to sources (RAGAS or an LLM judge, spot-checked by hand)
 - Citation accuracy: cited passages actually support the claim
+- Routing accuracy: share of messages sent to the right route
 - Permission leak count: must stay at zero
 - Latency: median and 95th percentile time to first token
 
@@ -175,10 +190,10 @@ Build a set of 80 test questions in week 1 and rerun it after every change, so e
 
 Once the core works, each of these teaches one advanced idea:
 
+- **Live MCP reads with per-user authentication:** fetch fresh data from tools using the asking user's own access, not the admin's
 - **Knowledge graph** of people, teams, projects and documents, to answer "who owns X?" and "what depends on Y?"
 - **Structured data route**: put Jira tickets in SQL tables and let the brain choose SQL or document search
 - **Proactive digests**: a daily summary of decisions and incidents posted to Slack
 - **Memory**: remember a user's team and past questions to personalise answers
 - **Multimodal**: diagrams and screenshots from docs, searched with an image-aware model
 - **Cost and latency tuning**: semantic caching, prompt caching, a small model for easy questions
-
