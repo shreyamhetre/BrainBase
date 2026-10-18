@@ -1,14 +1,15 @@
 """Summarise the cloned handbook: pages, size, sections, front matter and headings.
 
-Usage: python scripts/inspect_handbook.py
+Usage: python backend/scripts/inspect_handbook.py
 """
 
 import re
 import statistics
 from collections import Counter
-from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent / "data" / "raw" / "handbook" / "content" / "handbook"
+from app.config import DATA_DIR
+
+ROOT = DATA_DIR / "raw" / "handbook" / "content" / "handbook"
 FRONT_MATTER = re.compile(r"\A---\s*\n(.*?)\n---\s*\n", re.DOTALL)
 HEADING = re.compile(r"^(#{1,6})\s+\S", re.MULTILINE)
 CHARS_PER_TOKEN = 4  # rough estimate for English text

@@ -219,14 +219,16 @@ python -m venv .venv
 source .venv/bin/activate         # macOS/Linux
 pip install -r backend/requirements.txt        # NVIDIA GPU (CUDA 12.8)
 pip install -r backend/requirements-cpu.txt    # no NVIDIA GPU
+pip install -e backend                         # makes the backend's `app` package importable
 ```
 
 ### 4. Create the tables
 
 ```bash
-cd backend
 python -m app.db.migrate
 ```
+
+All commands run from the project root.
 
 ## 🗺️ Roadmap
 
@@ -262,22 +264,27 @@ Quality is measured, not guessed: a 90-question test set covering handbook polic
 ```
 Company_Brain/
 ├── backend/
-│   ├── app/
+│   ├── app/               the Python package
+│   │   ├── config.py      settings from .env
 │   │   ├── api/           HTTP routes
-│   │   ├── ingestion/     sync, parse, chunk, embed
+│   │   ├── ingestion/     selection rules, cleaning, chunking, embedding
 │   │   ├── retrieval/     hybrid search, RRF, rerank, permission filter
 │   │   ├── generation/    prompts, LLM calls, citations
-│   │   └── db/            schema and database access
-│   └── tests/
+│   │   └── db/            migration runner and database access
+│   ├── scripts/           inspection and check scripts (not part of the app)
+│   ├── tests/
+│   ├── pyproject.toml     makes `app` installable (pip install -e backend)
+│   └── requirements*.txt  GPU, CPU and shared dependencies
 ├── frontend/              Next.js chat and admin console (later)
-├── db/init/               SQL run on first database start
+├── db/
+│   ├── init/              SQL run on first database start (enables pgvector)
+│   └── migrations/        numbered schema changes, applied once each
 ├── data/
 │   ├── raw/               cloned sources (git-ignored)
 │   └── synthetic/         generated Slack / Notion / Jira data
 ├── eval/                  evaluation questions and results
-├── scripts/               one-off helper scripts
 ├── docs/                  plan, progress, assets
-├── .env.example           template for your .env
+├── .env                   your settings, shared by Docker Compose and the backend (git-ignored)
 └── docker-compose.yml
 ```
 

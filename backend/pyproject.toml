@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gitmore-backend"
+version = "0.1.0"
+description = "GitMore: an unofficial company brain over GitLab's public handbook"
+requires-python = ">=3.11"
+# Dependencies live in requirements.txt / requirements-cpu.txt, because PyTorch
+# needs a different package index for the GPU and CPU builds.
+
+[tool.setuptools.packages.find]
+include = ["app*"]

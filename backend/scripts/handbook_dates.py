@@ -6,7 +6,7 @@ with no commit in that window get no date: they are older than the window.
 Writes data/raw/handbook_dates.json  {"content/handbook/...md": "2026-09-30T12:00:00+00:00"}
 and prints how many pages fall in each age bucket, per section.
 
-Usage: python scripts/handbook_dates.py
+Usage: python backend/scripts/handbook_dates.py
 """
 
 import json
@@ -15,16 +15,13 @@ from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 
-DATA = Path(__file__).resolve().parent.parent / "data" / "raw"
+from app.config import DATA_DIR
+from app.ingestion.handbook_selection import CORE_SECTIONS
+
+DATA = DATA_DIR / "raw"
 REPO = DATA / "handbook"
 CONTENT = "content/handbook/"
 OUT = DATA / "handbook_dates.json"
-
-# Sections kept whatever their age (core policy, see docs/project-plan.md)
-CORE_SECTIONS = {
-    "values", "company", "people-policies", "total-rewards",
-    "people-group", "hiring", "communication", "leadership",
-}
 
 
 def last_change_dates() -> dict[str, str]:
