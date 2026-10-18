@@ -12,7 +12,7 @@
 - ✅ Postgres 18.6 + pgvector 0.8.7 running in Docker
 - ✅ Tables created: documents, chunks, schema_migrations (HNSW + GIN indexes)
 
-## Step 2: Ingest the handbook
+## Step 2: Ingest the handbook ✅
 
 - ✅ Handbook content cloned into data/raw/handbook (4,174 pages)
 - ✅ backend/scripts/inspect_handbook.py: pages, tokens, sections, front matter
@@ -29,11 +29,12 @@
 - ✅ Migration 002: people column on chunks
 - ✅ Chunk preview and dry run: 3,307 pages → 30,043 chunks, ~8.2M tokens (backend/scripts/chunk_stats.py)
 - ✅ Folder structure cleaned up: backend is an installable package, scripts moved to backend/scripts
-- ⬜ Fix people shortcodes that were dropped (team-by-manager-slug, stable-counterparts)
-- ⬜ Ingest script: documents + chunks, embed in batches, skip unchanged pages (content_hash)
-- ⬜ Test run on ~300 core pages, check rows in Postgres
-- ⬜ Full run: ~30,000 chunks embedded (~23 min)
-- ⬜ Search test: vector + keyword search return the right pages for sample questions
+- ✅ People shortcodes fixed: team-by-manager-slug, manager-by-report-name, stable-counterparts with manager (85 pages with people)
+- ✅ Selection counts back from the snapshot date (2026-10-04), not today: 3,309 pages, 30,053 chunks every run
+- ✅ Ingest script: documents + chunks, embed in batches, skip unchanged pages (app/ingestion/ingest_handbook.py)
+- ✅ Test run on core sections: 149 pages, 1,942 chunks, all with vectors (~26 chunks/s); re-run skips unchanged pages
+- ✅ Full run: 3,253 documents, 30,053 chunks, 0 missing vectors, 8.2M tokens, 458 MB (~22 chunks/s)
+- ✅ Search test (backend/scripts/search_test.py): expected page found in top 50 for 6/6 questions; top 5 for vector 2/6, keyword 3/6
 
 ## Step 3: Query path
 

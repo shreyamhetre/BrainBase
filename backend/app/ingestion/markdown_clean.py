@@ -111,10 +111,17 @@ def _replace_shortcode(match: re.Match, result: CleanResult) -> str:
         handles = [f"@{p.lstrip('@')}" for p in positional]
         result.people.update(handles)
         return ", ".join(handles)
-    if name in {"team-by-manager-slug", "engineering/stable-counterparts"} and named.get("manager"):
-        handle = f"@{named['manager']}"
+    if name == "team-by-manager-slug" and (manager := named.get("manager") or (positional[0] if positional else "")):
+        handle = f"@{manager.lstrip('@')}"
         result.people.add(handle)
         return f"(team of {handle})"
+    if name == "engineering/stable-counterparts" and named.get("manager"):
+        handle = f"@{named['manager'].lstrip('@')}"
+        result.people.add(handle)
+        return f"(stable counterparts of {handle})"
+    if name == "manager-by-report-name" and positional:
+        result.people.add(positional[0])
+        return f"(manager of {positional[0]})"
     if name == "yes":
         return "Yes"
     if name == "no":

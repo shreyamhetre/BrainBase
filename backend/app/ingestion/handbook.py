@@ -10,7 +10,7 @@ import frontmatter
 
 from app.config import DATA_DIR
 from app.ingestion.chunker import Chunk, chunk_markdown
-from app.ingestion.handbook_selection import DESIGN_DOCS_PREFIX
+from app.ingestion.handbook_selection import DESIGN_DOCS_PREFIX, should_ingest
 from app.ingestion.markdown_clean import clean_markdown
 
 REPO = DATA_DIR / "raw" / "handbook"
@@ -45,6 +45,12 @@ def _dates() -> dict[str, str]:
     return json.loads(DATES_FILE.read_text(encoding="utf-8")) if DATES_FILE.exists() else {}
 
 
+@lru_cache(maxsize=1)
+def snapshot_date() -> datetime:
+    """Date of the newest change in our clone; the selection rules count back from it."""
+    return max(datetime.fromisoformat(value) for value in _dates().values())
+
+
 def last_changed(rel_path: str) -> datetime | None:
     value = _dates().get(f"content/handbook/{rel_path}")
     return datetime.fromisoformat(value) if value else None
@@ -70,6 +76,17 @@ def design_doc_status(rel_path: str) -> str | None:
             if status:
                 return str(status).strip().lower()
     return None
+
+
+def selected_pages() -> list[Path]:
+    """All handbook pages that pass the selection rules, in a stable order."""
+    snapshot = snapshot_date()
+    pages = []
+    for path in sorted(CONTENT.rglob("*.md")):
+        rel = path.relative_to(CONTENT).as_posix()
+        if should_ingest(rel, last_changed(rel), design_doc_status(rel), snapshot):
+            pages.append(path)
+    return pages
 
 
 def _owners(meta: dict) -> list[str]:

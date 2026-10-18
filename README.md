@@ -235,8 +235,8 @@ All commands run from the project root.
 | | Step | |
 |---|---|---|
 | 1 | 🐘 Project setup, Postgres + pgvector in Docker | ✅ |
-| 2 | 📥 Ingest the handbook: parse, chunk, embed, store (permission columns included, default everyone) | ⏳ |
-| 3 | 🔎 Query path: LangGraph knowledge route, hybrid search, RRF, rerank, cited answers, first 20 eval questions, Langfuse tracing | |
+| 2 | 📥 Ingest the handbook: parse, chunk, embed, store (permission columns included, default everyone) | ✅ |
+| 3 | 🔎 Query path: LangGraph knowledge route, hybrid search, RRF, rerank, cited answers, first 20 eval questions, Langfuse tracing | ⏳ |
 | 4 | 📊 Full evaluation set and baseline scores. **Gate:** core RAG passes before new sources are added | |
 | 5 | 📗 Add product docs and issues | |
 | 6 | 💬 Synthetic Slack, Notion, Jira through connector sync + role-based permissions enforced | |

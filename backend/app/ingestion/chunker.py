@@ -17,6 +17,9 @@ from transformers import AutoTokenizer
 
 from app.config import EMBEDDING_MODEL
 
+# Bump when cleaning or chunking rules change, so ingestion re-embeds every page.
+CHUNKER_VERSION = "1"
+
 TARGET_TOKENS = 450
 MAX_TOKENS = 800
 MIN_TOKENS = 80

@@ -7,17 +7,13 @@ import statistics
 import time
 from collections import Counter
 
-from app.ingestion.handbook import CONTENT, design_doc_status, last_changed, load_page
-from app.ingestion.handbook_selection import should_ingest
+from app.ingestion.handbook import CONTENT, load_page, selected_pages
 
 
 def main() -> None:
     start = time.perf_counter()
     paths = sorted(CONTENT.rglob("*.md"))
-    selected = [
-        p for p in paths
-        if should_ingest(rel := p.relative_to(CONTENT).as_posix(), last_changed(rel), design_doc_status(rel))
-    ]
+    selected = selected_pages()
 
     sizes: list[int] = []
     dropped, per_section = Counter(), Counter()
