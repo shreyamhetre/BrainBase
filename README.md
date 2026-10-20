@@ -272,8 +272,8 @@ It runs 6 containers (web, worker, Postgres, ClickHouse, Redis, MinIO) separatel
 |---|---|---|
 | 1 | 🐘 Project setup, Postgres + pgvector in Docker | ✅ |
 | 2 | 📥 Ingest the handbook: parse, chunk, embed, store (permission columns included, default everyone) | ✅ |
-| 3 | 🔎 Query path: LangGraph knowledge route, hybrid search, RRF, rerank, cited answers, first 20 eval questions, Langfuse tracing | ⏳ |
-| 4 | 📊 Full evaluation set and baseline scores. **Gate:** core RAG passes before new sources are added | |
+| 3 | 🔎 Query path: LangGraph knowledge route, hybrid search, RRF, rerank, cited answers, first 20 eval questions, Langfuse tracing | ✅ |
+| 4 | 📊 Evaluation: 10 key questions, baseline scores (hit@5 9/9, MRR 0.81), known limitations recorded | ✅ |
 | 5 | 📗 Add product docs and issues | |
 | 6 | 💬 Synthetic Slack, Google Docs and confidential GitLab issues through connector sync + role-based permissions enforced | |
 | 7 | 🖥️ Next.js chat and admin console | |
@@ -283,7 +283,9 @@ Detailed progress: [docs/steps.md](docs/steps.md)
 
 ## 📊 Evaluation
 
-Quality is measured, not guessed: a 90-question test set covering handbook policy, engineering process, cross-source questions, expertise, conflicting sources, routing, permissions and questions with no answer.
+Quality is measured, not guessed. `python backend/scripts/evaluate.py` runs the questions in [eval/questions.md](eval/questions.md) and records each run. It starts with the 10 most important handbook questions and grows as sources arrive: cross-source, expertise, conflicting sources, routing and permissions.
+
+**Current baseline:** right page in the top 5 for 9/9 answerable questions, MRR 0.81, the right page cited 9/9, the no-answer question handled correctly, ~4.3 s per question. Known limitations are listed with the results.
 
 | Metric | What it checks |
 |---|---|

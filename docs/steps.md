@@ -36,7 +36,7 @@
 - ✅ Full run: 3,253 documents, 30,053 chunks, 0 missing vectors, 8.2M tokens, 458 MB (~22 chunks/s)
 - ✅ Search test (backend/scripts/search_test.py): expected page found in top 50 for 6/6 questions; top 5 for vector 2/6, keyword 3/6
 
-## Step 3: Query path
+## Step 3: Query path ✅
 
 - ✅ OpenAI key added to .env (GPT-4o mini)
 - ✅ Hybrid search in one SQL query: vector (HNSW) + keyword (all-words first), permission filter in both WHERE clauses, ~200-400 ms (app/retrieval/search.py)
@@ -49,4 +49,18 @@
 - ✅ Langfuse running locally (docker-compose.langfuse.yml, http://localhost:3100), project and API keys created
 - ✅ Langfuse tracing wired in: one trace per question with retrieve and GPT call (tokens, cost)
 - ✅ FastAPI: POST /ask and GET /health, models loaded at startup (app/api/main.py)
-- ⬜ Test the 20 questions through http://localhost:8000/docs and record results in eval/questions.md
+- ✅ Tested through http://localhost:8000/docs (by Shreya): answers looked good, citations per claim
+
+## Step 4: Evaluation ✅
+
+- ✅ Own evaluation script, RAGAS later (backend/scripts/evaluate.py): hit@5, MRR, cited, no-answer in code; faithful + correct graded by GPT-4o mini
+- ✅ Set cut to the 10 most important questions (eval/questions.md)
+- ✅ Baseline: hit@5 9/9, MRR 0.81, cited 9/9, no-answer 1/1; correct 8/10 by hand (Q1 scope, Q8 relevance accepted as known limitations)
+- ✅ Rerank pool 50 → 30: same retrieval scores, 6.1 → 4.3 s per question
+- ✅ Results and known limitations recorded in eval/questions.md; full runs in eval/results/
+
+## Step 5: Add product docs and issues
+
+- ⬜ Clone GitLab product docs (doc/ folder only) and ingest them
+- ⬜ Fetch real public issues from a few GitLab projects and ingest them
+- ⬜ Add cross-source questions to the evaluation

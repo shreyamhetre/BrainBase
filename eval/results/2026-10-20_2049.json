@@ -1,0 +1,527 @@
+{
+  "date": "2026-10-20T20:49",
+  "note": "baseline",
+  "summary": {
+    "hit_at_5": 9,
+    "mrr": 0.81,
+    "cited": 9,
+    "faithful": 9,
+    "correct": 10,
+    "no_answer": 1,
+    "avg_seconds": 6.1,
+    "tokens": 19672
+  },
+  "results": [
+    {
+      "number": 1,
+      "category": "policy",
+      "question": "How many weeks of parental leave do I get?",
+      "expected": [
+        "people-group/time-off-and-absence/leave-types"
+      ],
+      "rank": 2,
+      "cited_expected": true,
+      "said_not_found": false,
+      "faithful": true,
+      "correct": true,
+      "unsupported_claims": [],
+      "reason": "The answer accurately summarizes the parental leave policies for different locations as stated in the sources, providing specific details for the United States, Israel, the United Kingdom, and Canada without making unsupported claims.",
+      "answer": "The amount of parental leave you receive at GitLab varies by location:\n\n- **United States**: 16 weeks of paid parental leave [2].\n- **Israel**: Up to 16 weeks of GitLab parental leave, which runs concurrently with any statutory parental leave [3].\n- **United Kingdom**: Up to 18 weeks of unpaid parental leave per child [4].\n- **Canada**: Up to 61-65 weeks of parental leave, depending on the province, with GitLab providing a top-up to reach 100% salary if eligible for Employment Insurance [5].\n\nEach location has specific eligibility and application processes, so it's advisable to check the relevant section for your country.",
+      "sources": [
+        {
+          "n": 1,
+          "page": "people-policies/leave-of-absence/us",
+          "heading": "United States Leave of Absence Policies > Which leave is right for me? > How Much Time Do I Get Off?  Is my Job Protected?",
+          "cited": false
+        },
+        {
+          "n": 2,
+          "page": "people-group/time-off-and-absence/leave-types",
+          "heading": "Leave Types > GitLab Parental Leave > Eligibility, Entitlement and Planning Your Leave",
+          "cited": true
+        },
+        {
+          "n": 3,
+          "page": "entity/israel-ltd",
+          "heading": "GitLab Israel Ltd. information & benefits > Leave Policy > Statutory Parental Leave",
+          "cited": true
+        },
+        {
+          "n": 4,
+          "page": "total-rewards/benefits/general-and-entity-benefits/ltd-benefits-uk",
+          "heading": "GitLab LTD (UK) Benefits > Growing Family leaves > Unpaid Parental Leave",
+          "cited": true
+        },
+        {
+          "n": 5,
+          "page": "total-rewards/benefits/general-and-entity-benefits/canada-corp-benefits",
+          "heading": "GitLab Canada Corp > Parental Leave > Benefits",
+          "cited": true
+        }
+      ],
+      "seconds": 11.26,
+      "prompt_tokens": 1688,
+      "completion_tokens": 140
+    },
+    {
+      "number": 2,
+      "category": "policy",
+      "question": "How does paid time off work at GitLab?",
+      "expected": [
+        "people-group/time-off-and-absence/time-off-types"
+      ],
+      "rank": 1,
+      "cited_expected": true,
+      "said_not_found": false,
+      "faithful": true,
+      "correct": true,
+      "unsupported_claims": [],
+      "reason": "The answer accurately explains GitLab's Flexible PTO policy and includes relevant country-specific details for Canada and France, all supported by the cited sources. It maintains the correct structure by presenting the global policy first and then detailing country specifics as extras.",
+      "answer": "GitLab offers a Flexible Paid Time Off (PTO) policy that allows team members to take time off as needed, provided they coordinate with their manager and create a coverage plan. There is no specific annual limit on PTO, but special permission is required for time off exceeding 25 consecutive calendar days. Team members are encouraged to take at least two consecutive weeks off and a minimum of 25 days total each year. It's important to note that PTO cannot be used as a substitute for sick time, which is governed by a separate Sick Time Policy [1].\n\nIn Canada, the PTO policy is similar, with the added requirement of providing advance notice to managers based on the number of days requested. Compliance with provincial statutory requirements is also ensured [2]. \n\nIn France, GitLab provides PTO in accordance with local labor laws, including additional RTT (Reduction of Working Time) days, and emphasizes the importance of tracking time accurately in Workday [3]. \n\nOverall, while the core PTO policy is consistent globally, specific requirements and statutory compliance vary by country [4].",
+      "sources": [
+        {
+          "n": 1,
+          "page": "people-group/time-off-and-absence/time-off-types",
+          "heading": "Time Off Types > Flexible Paid Time Off (PTO) > Overview",
+          "cited": true
+        },
+        {
+          "n": 2,
+          "page": "total-rewards/benefits/general-and-entity-benefits/canada-corp-benefits",
+          "heading": "GitLab Canada Corp > Time Away & Leave > Paid Time Off & Vacation",
+          "cited": true
+        },
+        {
+          "n": 3,
+          "page": "total-rewards/benefits/general-and-entity-benefits/france-sas",
+          "heading": "GitLab France S.A.S. > Time Off Policies > Paid Time Off (Vacation)",
+          "cited": true
+        },
+        {
+          "n": 4,
+          "page": "total-rewards/benefits/general-and-entity-benefits/bv-benefits-belgium",
+          "heading": "GitLab BV (Belgium) Benefits > Important Notes",
+          "cited": true
+        },
+        {
+          "n": 5,
+          "page": "entity/iberia-srl-spain",
+          "heading": "GitLab Iberia s.r.l. (Spain) Information and Benefits > Time Off Policies > Statutory Sick Leave",
+          "cited": false
+        }
+      ],
+      "seconds": 6.83,
+      "prompt_tokens": 1819,
+      "completion_tokens": 212
+    },
+    {
+      "number": 3,
+      "category": "policy",
+      "question": "How much is the Growth and Development Fund and what can I use it for?",
+      "expected": [
+        "people-group/learning-and-development/growth-and-development"
+      ],
+      "rank": 1,
+      "cited_expected": true,
+      "said_not_found": false,
+      "faithful": true,
+      "correct": true,
+      "unsupported_claims": [],
+      "reason": "The answer accurately states the amount of the Growth and Development Fund and lists eligible uses, all of which are supported by the cited sources. It also correctly notes the restrictions on fund usage, aligning with the information provided in the sources.",
+      "answer": "The Growth and Development (G&D) Fund provides up to $10,000 per calendar year for eligible learning experiences that support career growth and skill enhancement for full-time GitLab employees who meet performance expectations. \n\nEligible uses of the G&D Fund include:\n- Academic courses from accredited institutions (tuition and enrollment fees)\n- Professional development certifications and courses\n- Self-service learning subscriptions (e.g., Coursera, LinkedIn Learning)\n- Language courses relevant to job performance\n- Coding-related learning opportunities\n- Programming books that support career development\n\nHowever, the fund cannot be used for team-wide training, therapy, or wellbeing resources, which should be covered by other means [1][2][4][5].",
+      "sources": [
+        {
+          "n": 1,
+          "page": "people-group/learning-and-development/growth-and-development",
+          "heading": "Growth and Development Fund",
+          "cited": true
+        },
+        {
+          "n": 2,
+          "page": "total-rewards/benefits/general-and-entity-benefits",
+          "heading": "General & Entity Specific Benefits & Information > Company Wide Benefits - Available to All Team Members > Financial Security & Professional Growth",
+          "cited": true
+        },
+        {
+          "n": 3,
+          "page": "people-group/learning-and-development/growth-and-development",
+          "heading": "Growth and Development Fund > Tax implications",
+          "cited": false
+        },
+        {
+          "n": 4,
+          "page": "people-group/learning-and-development/growth-and-development",
+          "heading": "Growth and Development Fund > Types of Growth and Development reimbursements > Academic study",
+          "cited": true
+        },
+        {
+          "n": 5,
+          "page": "people-group/learning-and-development/growth-and-development",
+          "heading": "Growth and Development Fund > Types of Growth and Development reimbursements > Parentaly",
+          "cited": true
+        }
+      ],
+      "seconds": 6.47,
+      "prompt_tokens": 2407,
+      "completion_tokens": 143
+    },
+    {
+      "number": 4,
+      "category": "policy",
+      "question": "What is the expense policy for a new laptop?",
+      "expected": [
+        "finance/expenses"
+      ],
+      "rank": 1,
+      "cited_expected": true,
+      "said_not_found": false,
+      "faithful": true,
+      "correct": true,
+      "unsupported_claims": [],
+      "reason": "The answer accurately reflects the expense policy for new laptops at GitLab, citing the relevant sources that confirm the requirements for purchasing and replacing laptops. All claims made are supported by the provided sources.",
+      "answer": "The expense policy for a new laptop at GitLab is as follows:\n\n- All laptops must be purchased through GitLab unless the team member is in a region where GitLab cannot deliver a laptop [1].\n- Team members can refresh their laptops after three years of employment. If a replacement is needed due to damage, the team member must open an issue with IT before purchasing a new one [1].\n- For existing team members, laptops are not included in the yearly refresh stipend of $500 for home office upgrades; they must connect with IT for replacements [2][3].\n\nIn summary, new laptops are provided by GitLab, and replacements must go through IT with prior approval.",
+      "sources": [
+        {
+          "n": 1,
+          "page": "finance/expenses",
+          "heading": "Global Travel and Expense Policy > Approved WFH Equipment List > Laptops, insurance and repairs",
+          "cited": true
+        },
+        {
+          "n": 2,
+          "page": "finance/expenses",
+          "heading": "Global Travel and Expense Policy > 4. PROCEDURES > 4.1 NON-TRAVEL RELATED EXPENSES",
+          "cited": true
+        },
+        {
+          "n": 3,
+          "page": "finance/accounts-payable/corp-credit-cards",
+          "heading": "Navan Purchasing Card > 4. Non- Permissible Items > Computer equipment and hardware",
+          "cited": true
+        },
+        {
+          "n": 4,
+          "page": "eta/corporate-it/end-user-services/laptop-management/laptop-repairs",
+          "heading": "Laptop Repairs",
+          "cited": false
+        },
+        {
+          "n": 5,
+          "page": "finance/expenses",
+          "heading": "Global Travel and Expense Policy > 7. OTHER > Domain Name Registration and Maintenance Policy",
+          "cited": false
+        }
+      ],
+      "seconds": 4.89,
+      "prompt_tokens": 2529,
+      "completion_tokens": 136
+    },
+    {
+      "number": 5,
+      "category": "culture",
+      "question": "What are GitLab's core values?",
+      "expected": [
+        "values"
+      ],
+      "rank": 2,
+      "cited_expected": true,
+      "said_not_found": false,
+      "faithful": true,
+      "correct": true,
+      "unsupported_claims": [],
+      "reason": "The answer accurately lists GitLab's six core values and correctly states that they spell the acronym CREDIT, which is supported by multiple sources. It fully addresses the question asked.",
+      "answer": "GitLab's six core values are:\n\n- \ud83e\udd1d Collaboration\n- \ud83d\udcc8 Results\n- \u23f1\ufe0f Efficiency\n- \ud83c\udf10 Diversity, Inclusion & Belonging\n- \ud83d\udc63 Iteration\n- \ud83d\udc41\ufe0f Transparency\n\nThese values together spell the acronym **CREDIT**, which reflects the assumption of good intent among team members [1][2][3].",
+      "sources": [
+        {
+          "n": 1,
+          "page": "company/history",
+          "heading": "History of GitLab > Value Origin stories",
+          "cited": true
+        },
+        {
+          "n": 2,
+          "page": "values",
+          "heading": "GitLab Values > CREDIT",
+          "cited": true
+        },
+        {
+          "n": 3,
+          "page": "company/culture/all-remote/onboarding",
+          "heading": "The complete guide to remote onboarding for new-hires > Remote first company values",
+          "cited": true
+        },
+        {
+          "n": 4,
+          "page": "legal/esg/fy23-esg-report",
+          "heading": "GitLab Fiscal Year 2023 (FY23) ESG Report > Social > Diversity, Inclusion, and Belonging*",
+          "cited": false
+        },
+        {
+          "n": 5,
+          "page": "marketing/product-and-technical-marketing/product-and-solution-marketing/dod12/2019-best-executive",
+          "heading": "2019 DevOps Dozen - Best DevOps Solution Provider Executive: Sid Sijbrandij > Forging the future of work",
+          "cited": false
+        }
+      ],
+      "seconds": 5.02,
+      "prompt_tokens": 1764,
+      "completion_tokens": 75
+    },
+    {
+      "number": 6,
+      "category": "culture",
+      "question": "How should I use Slack at GitLab?",
+      "expected": [
+        "tools-and-tips/slack",
+        "communication/chat"
+      ],
+      "rank": 1,
+      "cited_expected": true,
+      "said_not_found": false,
+      "faithful": true,
+      "correct": true,
+      "unsupported_claims": [],
+      "reason": "The answer accurately summarizes GitLab's Slack guidelines by referencing the appropriate sources for each claim, ensuring all points are supported and relevant to the question about using Slack at GitLab.",
+      "answer": "At GitLab, Slack is a crucial tool for internal communication and collaboration. Here are the key points on how to use it effectively:\n\n- **Purpose**: Use Slack for internal-only communication, company announcements, team updates, asynchronous standups, and informal chats. It should not be used for obtaining approvals, documenting decisions, or storing official records [3].\n- **Communication Guidelines**: Set up your profile, join relevant channels, and learn to use threads and mentions. Be mindful of your notification settings to align with your working hours [1].\n- **Security**: All work-related conversations must occur in Slack to maintain security and compliance. Avoid using integrated chat applications that may mix personal and work communications [2].\n- **Limitations**: Remember that only 90 days of Slack activity is retained, so important discussions should be documented elsewhere [3].\n- **Onboarding**: New team members should be introduced to Slack and encouraged to engage with their teams through channels like `#new_team_members` [5].\n\nFor urgent matters, it's recommended to tag relevant individuals in GitLab issues rather than relying solely on Slack DMs [4].",
+      "sources": [
+        {
+          "n": 1,
+          "page": "tools-and-tips/slack",
+          "heading": "Slack > In general",
+          "cited": true
+        },
+        {
+          "n": 2,
+          "page": "people-group/acceptable-use-policy",
+          "heading": "GitLab Internal Acceptable Use Policy > Procedure > Mobile Messaging",
+          "cited": true
+        },
+        {
+          "n": 3,
+          "page": "communication",
+          "heading": "GitLab Communication > Slack",
+          "cited": true
+        },
+        {
+          "n": 4,
+          "page": "engineering/infrastructure-platforms/production-engineering/cloud-cost-utilization",
+          "heading": "Cloud Cost Utilization Team > How We Work",
+          "cited": true
+        },
+        {
+          "n": 5,
+          "page": "people-group/general-onboarding/onboarding-buddies",
+          "heading": "GitLab Onboarding Buddies > Buddy Responsibilities",
+          "cited": true
+        }
+      ],
+      "seconds": 6.03,
+      "prompt_tokens": 1582,
+      "completion_tokens": 230
+    },
+    {
+      "number": 7,
+      "category": "engineering",
+      "question": "How do I get my merge request reviewed and merged?",
+      "expected": [
+        "engineering/workflow/code-review"
+      ],
+      "rank": 4,
+      "cited_expected": true,
+      "said_not_found": false,
+      "faithful": true,
+      "correct": true,
+      "unsupported_claims": [],
+      "reason": "The answer accurately summarizes the steps to get a merge request reviewed and merged, citing relevant sources for each step without any unsupported claims or mis-scoped information.",
+      "answer": "To get your merge request (MR) reviewed and merged, follow these steps:\n\n1. **Prepare Your MR**: Document the purpose and any necessary changes in the MR description to help reviewers understand it better [5].\n2. **Request Review**: Assign your MR to one or more reviewers using the Merge Request Reviewer feature. Specify areas for review if applicable (e.g., backend, frontend) [1][5].\n3. **Wait for Review**: Reviewers will assess your MR and either approve it or request changes. If they approve, they can use the approve button in the MR [2][4].\n4. **Address Feedback**: Make any necessary changes based on reviewer feedback and ensure all required approvals are obtained [2].\n5. **Merge the MR**: Once approved by the necessary reviewers, assign the MR to a maintainer for merging. If the maintainer has the authority, they will merge it; otherwise, they may need to seek additional approvals [3][5].\n\nRemember, it is your responsibility to ensure the MR is reviewed in a timely manner, especially if it remains in the \"ready for review\" state for too long [1].",
+      "sources": [
+        {
+          "n": 1,
+          "page": "customer-experience/professional-services-engineering/professional-services-delivery-methodology/gitlab-best-practices",
+          "heading": "GitLab Best Practices > 4. Perform code reviews before merging into the main branch > Requesting a review",
+          "cited": true
+        },
+        {
+          "n": 2,
+          "page": "customer-experience/professional-services-engineering/professional-services-delivery-methodology/gitlab-best-practices",
+          "heading": "GitLab Best Practices > 4. Perform code reviews before merging into the main branch > GitLab code review workflow",
+          "cited": true
+        },
+        {
+          "n": 3,
+          "page": "engineering/infrastructure-platforms/gitlab-dedicated/switchboard",
+          "heading": "Switchboard team > How we work > Merge Request Review Guidelines",
+          "cited": true
+        },
+        {
+          "n": 4,
+          "page": "engineering/workflow/code-review",
+          "heading": "Code Review Guidelines > Reviewer",
+          "cited": true
+        },
+        {
+          "n": 5,
+          "page": "enterprise-data/how-we-work",
+          "heading": "Data Team - How We Work > How We Work > Workflow Summary",
+          "cited": true
+        }
+      ],
+      "seconds": 5.39,
+      "prompt_tokens": 2087,
+      "completion_tokens": 237
+    },
+    {
+      "number": 8,
+      "category": "engineering",
+      "question": "How do I report a security incident?",
+      "expected": [
+        "security/security-operations/sirt/engaging-security-on-call"
+      ],
+      "rank": 1,
+      "cited_expected": true,
+      "said_not_found": false,
+      "faithful": false,
+      "correct": true,
+      "unsupported_claims": [
+        "For Reclaim.ai incidents: Change your Reclaim.ai password and revoke active sessions, then notify the GitLab Security team via the `#security-help` channel or follow the Security Incident Response procedure."
+      ],
+      "reason": "The answer correctly outlines the steps to report a security incident at GitLab, but it includes a specific step for Reclaim.ai incidents that is not supported by the cited sources, making it unfaithful.",
+      "answer": "To report a security incident at GitLab, you can follow these steps:\n\n1. **Via Slack**: Use the `/security` slash command to trigger SIRT's Escalation Workflow. This will send you a link to a Tines webform to file the incident. You can also tag the current on-call engineer using `@sirt-oncall` for smaller requests.\n\n2. **If Slack is inaccessible**: Send an email with a brief description of the issue to `panic@gitlab.com`.\n\n3. **For Reclaim.ai incidents**: Change your Reclaim.ai password and revoke active sessions, then notify the GitLab Security team via the `#security-help` channel or follow the Security Incident Response procedure.\n\n4. **General Reporting**: If uncertain about whom to report to, use the support web form, and your report will be forwarded internally [1][2][3][4].",
+      "sources": [
+        {
+          "n": 1,
+          "page": "security/security-operations/sirt/engaging-security-on-call",
+          "heading": "Engaging the Security Engineer On-Call > Engage the Security Engineer On-Call",
+          "cited": true
+        },
+        {
+          "n": 2,
+          "page": "security/security-operations/sirt/sec-incident-response",
+          "heading": "Security Incident Response Guide > Scope > Incident Identification",
+          "cited": true
+        },
+        {
+          "n": 3,
+          "page": "eta/corporate-it/end-user-services/supported-apps/reclaim-ai",
+          "heading": "Reclaim.ai > Security Incident Reporting > Immediate Actions Required",
+          "cited": true
+        },
+        {
+          "n": 4,
+          "page": "security/product-security/vulnerability-management/incident-response-guidance",
+          "heading": "Incident Response Guidance > Process > 1. Identification",
+          "cited": true
+        },
+        {
+          "n": 5,
+          "page": "security/security-operations/sirt",
+          "heading": "Security Incident Response Team - SIRT > Limited Access",
+          "cited": false
+        }
+      ],
+      "seconds": 5.12,
+      "prompt_tokens": 1268,
+      "completion_tokens": 185
+    },
+    {
+      "number": 9,
+      "category": "design-doc",
+      "question": "Why does secret detection use REST instead of gRPC for validity checks?",
+      "expected": [
+        "engineering/architecture/design-documents/secret_detection_validity_checks/decisions/002_use_rest_over_grpc_for_sdrs_communication"
+      ],
+      "rank": 1,
+      "cited_expected": true,
+      "said_not_found": false,
+      "faithful": true,
+      "correct": true,
+      "unsupported_claims": [],
+      "reason": "The answer accurately summarizes the reasons for choosing REST over gRPC for validity checks, citing the appropriate sources that support each claim made. It addresses the question directly and comprehensively.",
+      "answer": "Secret detection uses REST instead of gRPC for validity checks due to several key considerations:\n\n- The service only needs to accept individual tokens or small arrays of tokens, making gRPC's streaming capabilities unnecessary.\n- REST offers a simpler implementation and integration process, which is beneficial given the specific requirements of the Secret Detection Response Service (SDRS).\n- Standard HTTP tooling and debugging capabilities are readily available with REST, facilitating easier partner integration if needed in the future.\n\nWhile gRPC provides advanced features like built-in streaming and binary serialization, these are not relevant for the current use case, leading to the decision to prioritize REST for its simplicity and adequacy for the task at hand [1][2][4].",
+      "sources": [
+        {
+          "n": 1,
+          "page": "engineering/architecture/design-documents/secret_detection_validity_checks/decisions/002_use_rest_over_grpc_for_sdrs_communication",
+          "heading": "GitLab Secret Detection Validity Checks ADR 002: Use REST over gRPC for SDRS communication > Context",
+          "cited": true
+        },
+        {
+          "n": 2,
+          "page": "engineering/architecture/design-documents/secret_detection_validity_checks/decisions/002_use_rest_over_grpc_for_sdrs_communication",
+          "heading": "GitLab Secret Detection Validity Checks ADR 002: Use REST over gRPC for SDRS communication > Summary",
+          "cited": true
+        },
+        {
+          "n": 3,
+          "page": "engineering/architecture/design-documents/secret_detection_validity_checks/decisions/002_use_rest_over_grpc_for_sdrs_communication",
+          "heading": "GitLab Secret Detection Validity Checks ADR 002: Use REST over gRPC for SDRS communication > Alternatives Considered",
+          "cited": false
+        },
+        {
+          "n": 4,
+          "page": "engineering/architecture/design-documents/secret_detection_validity_checks/decisions/002_use_rest_over_grpc_for_sdrs_communication",
+          "heading": "GitLab Secret Detection Validity Checks ADR 002: Use REST over gRPC for SDRS communication > Consequences",
+          "cited": true
+        },
+        {
+          "n": 5,
+          "page": "engineering/architecture/design-documents/secret_detection_validity_checks",
+          "heading": "Validity Checks for Secret Detection findings > Decisions",
+          "cited": false
+        }
+      ],
+      "seconds": 5.13,
+      "prompt_tokens": 913,
+      "completion_tokens": 139
+    },
+    {
+      "number": 10,
+      "category": "no-answer",
+      "question": "What is GitLab's four-day work week policy?",
+      "expected": [],
+      "rank": null,
+      "cited_expected": null,
+      "said_not_found": true,
+      "faithful": true,
+      "correct": true,
+      "unsupported_claims": [],
+      "reason": "said it couldn't find this",
+      "answer": "I couldn't find this in the handbook.",
+      "sources": [
+        {
+          "n": 1,
+          "page": "entity/israel-ltd",
+          "heading": "GitLab Israel Ltd. information & benefits > Timekeeping > Daily Work Time",
+          "cited": false
+        },
+        {
+          "n": 2,
+          "page": "people-group/time-off-and-absence/time-off-types",
+          "heading": "Time Off Types > Flexible Paid Time Off (PTO) > Overview",
+          "cited": false
+        },
+        {
+          "n": 3,
+          "page": "people-policies",
+          "heading": "People Policies > Entity-Specific Employment Policies > United Kingdom",
+          "cited": false
+        },
+        {
+          "n": 4,
+          "page": "total-rewards/benefits/general-and-entity-benefits/canada-corp-benefits",
+          "heading": "GitLab Canada Corp > Time Away & Leave > Paid Time Off & Vacation",
+          "cited": false
+        },
+        {
+          "n": 5,
+          "page": "total-rewards/benefits/general-and-entity-benefits/global-expansion",
+          "heading": "Global Expansion > South Africa \ud83c\uddff\ud83c\udde6",
+          "cited": false
+        }
+      ],
+      "seconds": 4.61,
+      "prompt_tokens": 2110,
+      "completion_tokens": 8
+    }
+  ]
+}

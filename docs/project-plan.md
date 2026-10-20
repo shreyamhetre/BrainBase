@@ -166,7 +166,7 @@ If step 4 misses the gate, fix chunking and retrieval before adding sources; eve
 
 ## Evaluation
 
-Start with 20 questions in step 3 and grow to the full set of 90 in step 4. Rerun it after every change, so each improvement is measured rather than guessed.
+Start with the 10 most important handbook questions (step 4) and add questions as each source arrives, toward the categories below. Rerun after every change with `backend/scripts/evaluate.py`, so each improvement is measured rather than guessed. Retrieval metrics are computed in code; faithfulness and correctness are graded by GPT-4o mini as judge, with failures checked by hand. RAGAS can be added later to compare.
 
 | Category | Count | Example | Pass means |
 | --- | --- | --- | --- |

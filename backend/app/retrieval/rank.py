@@ -18,7 +18,7 @@ from app.config import RERANK_MODEL
 from app.retrieval.search import Candidate
 
 RRF_K = 60          # standard constant from the RRF paper; dampens the gap between ranks
-RERANK_POOL = 50    # chunks the reranker reads
+RERANK_POOL = 30    # chunks the reranker reads (50 → 30 kept the same scores, see eval/questions.md)
 FINAL_K = 5         # chunks passed on to the LLM
 RERANK_MAX_LENGTH = 1024
 
