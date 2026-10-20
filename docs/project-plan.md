@@ -4,7 +4,7 @@ By Shreya Mhetre
 
 ## Overview
 
-We will build a working company brain for GitLab: one chat interface that answers employee questions from the real public handbook, docs and issues, plus synthetic Slack, Notion and Jira data, with cited answers and role-based permissions.
+We will build a working company brain for GitLab: one chat interface that answers employee questions from the real public handbook, docs and issues, plus synthetic Slack, Google Docs and confidential GitLab issues, with cited answers and role-based permissions.
 
 **Problem it solves.** GitLab is a \~2,000-person remote company. Knowledge is spread across a huge handbook, thousands of issues, chat threads and meetings. People waste time searching, ask the same questions repeatedly and miss decisions. The brain gives one place to ask, with trustworthy cited answers that respect who can see what.
 
@@ -30,8 +30,10 @@ Start with one real source (the handbook), add docs and issues, then layer in sy
 | Issues, epics, MRs | Real | Public GitLab API, a few projects only | Discussions, decisions, freshness |
 | Meeting transcripts | Real | 10 to 20 GitLab Unfiltered videos, transcribed with Whisper | Spoken, messy text |
 | Slack | Synthetic | Free workspace, channels filled by an LLM script | Chat threads, informal answers |
-| Notion or Google Drive | Synthetic | Free workspace with meeting notes, plans | Mixed doc types |
-| Jira or Linear | Synthetic | Free project with tickets linked to real issues | Cross-tool linking |
+| Google Docs / Drive | Synthetic | Free Google Drive with meeting notes, plans and an HR-only doc | Mixed doc types, sharing permissions |
+| Confidential GitLab issues | Synthetic | Free private GitLab project with internal tickets linked to real issues | Cross-tool linking; same connector as real issues |
+
+GitLab uses Slack for chat, Google Docs for meeting notes and plans, Zoom for meetings and its own GitLab issues for tickets; it doesn't use Jira or Notion internally. The synthetic sources mirror that, so the demo matches how GitLab really works.
 
 **Which handbook pages are ingested**
 
@@ -82,6 +84,7 @@ QUERY (runs for every message)
 **Query**
 
 - **One entry point, router decides:** users ask in plain language; a LangGraph router picks knowledge (RAG), action (MCP), both, or a clarifying question. For example, "Summarize the PTO policy and post it to #hr" searches first, then acts.
+- **No separate rewrite call:** each message costs one answer call. Step 3 answers standalone questions (retrieve → answer). Follow-ups in the chat (step 7) search with the previous question plus the new one and pass the chat history to the answer call, still one call. In step 8 the router's call also returns the standalone question, so rewriting adds no extra call.
 - **MCP for writes only:** all reads come from the indexed, permission-tagged data. Live MCP reads are skipped for now, because admin-connected MCP servers could see more than the user is allowed to.
 - **Embed the question with the same model:** after rewriting, the question is embedded with BGE-M3, the same model used for chunks, or vector search won't match properly.
 - **Permission filter inside the search:** applied as a WHERE condition in the same SQL query as the search, so restricted chunks never reach the LLM.
@@ -123,7 +126,7 @@ The app has two screens: a chat for employees and an admin console for you to se
 - Role switcher (Engineer, HR, Manager, Guest) to demo permissions; in a real product the role comes from login, never a dropdown
 - Filters: source, team, date range
 - Upload a file to ask questions about it
-- Actions asked in plain language ("create a Jira ticket for this bug"); the router decides. Slash commands such as /ticket or /who-knows are optional shortcuts
+- Actions asked in plain language ("create an issue for this bug"); the router decides. Slash commands such as /ticket or /who-knows are optional shortcuts
 
 **Chat outputs**
 
@@ -132,7 +135,7 @@ The app has two screens: a chat for employees and an admin console for you to se
 - "I couldn't find this" when evidence is missing, instead of a guess
 - Conflict warning when sources disagree, with the newer one preferred
 - Suggested experts for the topic
-- Action cards to confirm before acting: create a Jira ticket, post to Slack, draft a Notion page
+- Action cards to confirm before acting: create a GitLab issue, post to Slack, draft a Google Doc
 - A clarifying question when the request is unclear
 - Thumbs up or down on every answer, stored for evaluation
 
@@ -155,7 +158,7 @@ Steps run in this order, with no fixed dates. One gate: core RAG must pass the e
 | 3 | Query path: LangGraph graph with the knowledge route, hybrid search, RRF, rerank, cited answers. First 20 eval questions. Langfuse tracing. Test through a CLI script or FastAPI's /docs page | Questions return cited answers; traces visible |
 | 4 | Full evaluation set and baseline scores. **Gate:** core RAG passes before new sources are added | Baseline metrics recorded |
 | 5 | Add product docs and issues | Cross-source questions pass |
-| 6 | Synthetic Slack, Notion, Jira through connector sync, plus role-based permissions enforced | Permission tests pass with zero leaks |
+| 6 | Synthetic Slack, Google Docs and confidential GitLab issues through connector sync, plus role-based permissions enforced | Permission tests pass with zero leaks |
 | 7 | Next.js chat and admin console | Full demo runs in the browser |
 | 8 | Action route: MCP writes with confirmation, clarify route, then stretch goals | Actions work after user confirms |
 
@@ -192,7 +195,7 @@ Once the core works, each of these teaches one advanced idea:
 
 - **Live MCP reads with per-user authentication:** fetch fresh data from tools using the asking user's own access, not the admin's
 - **Knowledge graph** of people, teams, projects and documents, to answer "who owns X?" and "what depends on Y?"
-- **Structured data route**: put Jira tickets in SQL tables and let the brain choose SQL or document search
+- **Structured data route**: put issues (labels, assignees, states) in SQL tables and let the brain choose SQL or document search
 - **Proactive digests**: a daily summary of decisions and incidents posted to Slack
 - **Memory**: remember a user's team and past questions to personalise answers
 - **Multimodal**: diagrams and screenshots from docs, searched with an image-aware model

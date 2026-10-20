@@ -11,5 +11,16 @@ pgvector>=0.4
 python-frontmatter>=1.1
 markdown-it-py>=3.0
 
+# Orchestration and LLM (OpenAI SDK used directly, no LangChain wrappers)
+langgraph>=1.0
+openai>=2.0
+
+# API
+fastapi>=0.115
+uvicorn>=0.32
+
+# Tracing (self-hosted Langfuse, docker-compose.langfuse.yml)
+langfuse>=3.0
+
 # Config
 python-dotenv>=1.0

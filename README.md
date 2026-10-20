@@ -25,9 +25,9 @@
 
 ## 🦊 What is GitMore?
 
-GitMore is a **company brain**: one chat interface over everything a company knows, spread across its handbook, docs, issues, meetings, Slack, Drive and Jira.
+GitMore is a **company brain**: one chat interface over everything a company knows, spread across its handbook, docs, issues, meetings, Slack and Google Docs.
 
-It's built around GitLab, a ~2,000-person remote company, using its **real public handbook, docs and issues** plus **synthetic Slack, Notion and Jira data** that references the real content, so it all feels like one company.
+It's built around GitLab, a ~2,000-person remote company, using its **real public handbook, docs and issues** plus **synthetic Slack threads, Google Docs and confidential GitLab issues** that reference the real content, so it all feels like one company. These mirror the tools GitLab actually uses.
 
 > [!NOTE]
 > GitMore is an unofficial learning project. It is not affiliated with or endorsed by GitLab.
@@ -43,7 +43,7 @@ It's built around GitLab, a ~2,000-person remote company, using its **real publi
 | ⚖️ **Conflict detection** | When sources disagree, the newer one wins and you're warned |
 | 🙅 **Honest "I don't know"** | Says so when there's no evidence, instead of guessing |
 | 🧑‍💻 **Who knows this?** | Suggests the people with expertise on a topic |
-| ⚡ **Actions through MCP** | Create a Jira ticket, post to Slack or draft a Notion page, after you confirm |
+| ⚡ **Actions through MCP** | Create a GitLab issue, post to Slack or draft a Google Doc, after you confirm |
 | 📊 **Measured quality** | A 90-question evaluation set, rerun after every change |
 
 ## 🧠 How it works
@@ -61,8 +61,8 @@ flowchart LR
         I["🐛 Issues & MRs"]
         M["🎙️ Meetings"]
         SL["💬 Slack"]
-        N["📝 Notion / Drive"]
-        J["🎫 Jira"]
+        N["📝 Google Docs"]
+        J["🔒 Confidential issues"]
     end
 
     SRC --> SY["🔄 Sync<br/>new · changed · deleted"]
@@ -127,7 +127,7 @@ flowchart TD
 - **The router decides the route**, so users never pick a tool or type a command. One question box for everything.
 - **Knowledge comes from the index through RAG; actions go through MCP.** A single request can use both: "Summarize the PTO policy and post it to #hr" searches first, then acts.
 - **Unclear messages get a clarifying question** instead of a search, such as greetings or vague requests.
-- **Every action needs your confirmation** before anything is written to Slack, Jira or Notion.
+- **Every action needs your confirmation** before anything is written to Slack, GitLab or Google Docs.
 - **Permissions apply to every answer:** all reads come from indexed, permission-tagged data, filtered inside the same SQL query as the search, so restricted chunks are never retrieved. MCP is used only for writes, not for reading live data.
 - **Same embedding model** for chunks and questions, or vector search won't match.
 - **RRF** (reciprocal rank fusion) combines the vector and keyword lists by rank, then the **reranker** reads the top 50 closely and keeps the best 5.
@@ -165,8 +165,8 @@ flowchart TD
 | ![GitLab](https://img.shields.io/badge/Issues_&_MRs-FC6D26?logo=gitlab&logoColor=white) | 🐛 | Real | Discussions, decisions, freshness |
 | ![YouTube](https://img.shields.io/badge/Unfiltered_meetings-FF0000?logo=youtube&logoColor=white) | 🎙️ | Real, transcribed | Spoken, messy text |
 | ![Slack](https://img.shields.io/badge/Slack-4A154B?logo=slack&logoColor=white) | 💬 | Synthetic | Chat threads, informal answers |
-| ![Notion](https://img.shields.io/badge/Notion_/_Drive-000000?logo=notion&logoColor=white) | 📝 | Synthetic | Mixed doc types |
-| ![Jira](https://img.shields.io/badge/Jira-0052CC?logo=jira&logoColor=white) | 🎫 | Synthetic | Cross-tool linking |
+| ![Google Docs](https://img.shields.io/badge/Google_Docs-4285F4?logo=googledocs&logoColor=white) | 📝 | Synthetic | Meeting notes, plans, an HR-only doc |
+| ![GitLab](https://img.shields.io/badge/Confidential_issues-FC6D26?logo=gitlab&logoColor=white) | 🔒 | Synthetic | Internal tickets linked to real issues |
 
 ## 🚀 Getting started
 
@@ -232,7 +232,16 @@ python -m app.db.migrate
 
 All commands run from the project root.
 
-### 5. Langfuse tracing (optional)
+### 5. Ask questions
+
+```bash
+python -m app.ask "How many weeks of parental leave do I get?"   # command line
+uvicorn app.api.main:app --reload --reload-dir backend/app         # API, then open http://localhost:8000/docs
+```
+
+Test questions with expected sources: [eval/questions.md](eval/questions.md).
+
+### 6. Langfuse tracing (optional)
 
 ```bash
 docker compose -f docker-compose.langfuse.yml up -d
@@ -241,7 +250,7 @@ docker compose -f docker-compose.langfuse.yml up -d
 Opens at http://localhost:3100. It needs these settings in `.env` (generate random values for the secrets):
 
 ```env
-LANGFUSE_HOST=http://localhost:3100
+LANGFUSE_BASE_URL=http://localhost:3100
 LANGFUSE_PUBLIC_KEY=pk-lf-...        # any value; becomes the project's API key on first start
 LANGFUSE_SECRET_KEY=sk-lf-...
 LF_INIT_USER_EMAIL=admin@gitmore.local
@@ -266,7 +275,7 @@ It runs 6 containers (web, worker, Postgres, ClickHouse, Redis, MinIO) separatel
 | 3 | 🔎 Query path: LangGraph knowledge route, hybrid search, RRF, rerank, cited answers, first 20 eval questions, Langfuse tracing | ⏳ |
 | 4 | 📊 Full evaluation set and baseline scores. **Gate:** core RAG passes before new sources are added | |
 | 5 | 📗 Add product docs and issues | |
-| 6 | 💬 Synthetic Slack, Notion, Jira through connector sync + role-based permissions enforced | |
+| 6 | 💬 Synthetic Slack, Google Docs and confidential GitLab issues through connector sync + role-based permissions enforced | |
 | 7 | 🖥️ Next.js chat and admin console | |
 | 8 | ⚡ Action route (MCP writes with confirmation), clarify route and stretch goals | |
 
@@ -308,7 +317,7 @@ Company_Brain/
 │   └── migrations/        numbered schema changes, applied once each
 ├── data/
 │   ├── raw/               cloned sources (git-ignored)
-│   └── synthetic/         generated Slack / Notion / Jira data
+│   └── synthetic/         generated Slack / Google Docs / issue data
 ├── eval/                  evaluation questions and results
 ├── docs/                  plan, progress, assets
 ├── .env                   your settings, shared by Docker Compose and the backend (git-ignored)
@@ -319,7 +328,7 @@ Company_Brain/
 
 - **GitLab Handbook** ([gitlab-com/content-sites/handbook](https://gitlab.com/gitlab-com/content-sites/handbook)): the repository is published under the MIT License, Copyright (c) 2011-present GitLab B.V.
 - **GitLab product docs** (`doc/` in [gitlab-org/gitlab](https://gitlab.com/gitlab-org/gitlab)): licensed under [Creative Commons CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
-- **Slack, Notion and Jira data** in this project is synthetic and invented for testing.
+- **Slack threads, Google Docs and confidential issues** in this project are synthetic and invented for testing.
 
 Raw GitLab content is downloaded locally into `data/raw/` and is not redistributed in this repository.
 

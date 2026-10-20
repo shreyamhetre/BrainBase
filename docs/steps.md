@@ -38,13 +38,15 @@
 
 ## Step 3: Query path
 
-- ⬜ OpenAI key added to .env (you add it; GPT-4o mini)
+- ✅ OpenAI key added to .env (GPT-4o mini)
 - ✅ Hybrid search in one SQL query: vector (HNSW) + keyword (all-words first), permission filter in both WHERE clauses, ~200-400 ms (app/retrieval/search.py)
 - ✅ Duplicate BGE-M3 weights removed (4.25 → 2.14 GB); models load offline from cache (HF_HUB_OFFLINE=1 in .env)
 - ✅ RRF merge + BGE Reranker v2-m3 (top 50 → top 5): expected page in top 5 for 6/6 questions, up from 2/6 (app/retrieval/rank.py, retrieve.py)
-- ⬜ LangGraph graph with the knowledge route
-- ⬜ GPT-4o mini answer with citations
-- ⬜ First 20 evaluation questions
+- ✅ LangGraph graph: retrieve → answer, no separate rewrite call (app/graph.py)
+- ✅ GPT-4o mini answer with numbered citations, via the openai SDK (app/generation/answer.py)
+- ✅ CLI: python -m app.ask "question" (app/ask.py); 6 test questions ~4-5 s each, ~2,000 tokens each
+- ✅ First 20 evaluation questions with expected pages (eval/questions.md)
 - ✅ Langfuse running locally (docker-compose.langfuse.yml, http://localhost:3100), project and API keys created
-- ⬜ Langfuse tracing wired into the graph
-- ⬜ Test through a CLI script and FastAPI /docs
+- ✅ Langfuse tracing wired in: one trace per question with retrieve and GPT call (tokens, cost)
+- ✅ FastAPI: POST /ask and GET /health, models loaded at startup (app/api/main.py)
+- ⬜ Test the 20 questions through http://localhost:8000/docs and record results in eval/questions.md
