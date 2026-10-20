@@ -39,10 +39,11 @@
 ## Step 3: Query path
 
 - ⬜ OpenAI key added to .env (you add it; GPT-4o mini)
-- ⬜ Hybrid search in SQL: vector + keyword, permission filter in the WHERE clause
+- ✅ Hybrid search in one SQL query: vector (HNSW) + keyword (all-words first), permission filter in both WHERE clauses, ~200-400 ms (app/retrieval/search.py)
 - ⬜ Merge with RRF, rerank top 50 → top 5 (BGE Reranker v2-m3)
 - ⬜ LangGraph graph with the knowledge route
 - ⬜ GPT-4o mini answer with citations
 - ⬜ First 20 evaluation questions
-- ⬜ Langfuse tracing
+- ✅ Langfuse running locally (docker-compose.langfuse.yml, http://localhost:3100), project and API keys created
+- ⬜ Langfuse tracing wired into the graph
 - ⬜ Test through a CLI script and FastAPI /docs

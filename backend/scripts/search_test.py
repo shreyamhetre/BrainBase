@@ -1,78 +1,69 @@
-"""Run sample questions through vector search and keyword search separately, and show
-where the expected page lands in each. A first look at retrieval before step 3 adds
-hybrid search, RRF and reranking.
+"""Run sample questions through hybrid search and show where the expected page lands
+in the vector list and the keyword list. A baseline before RRF and reranking.
 
 Usage: python backend/scripts/search_test.py
 """
 
-import psycopg
-from pgvector.psycopg import register_vector
+import time
 
-from app.config import DATABASE_URL
-from app.embedding import embed
+from app.db.connection import connect
+from app.embedding import get_model
+from app.retrieval.search import CANDIDATES_PER_SEARCH, Candidate, hybrid_search
 
 TOP_K = 5
-SEARCH_DEPTH = 50  # how far down to look for the expected page
+ROLES = ["all"]
 
-# (question, keyword query, pages that correctly answer it)
+# (question, pages that correctly answer it)
 QUESTIONS = [
-    ("How many weeks of parental leave do I get?", "parental leave weeks",
+    ("How many weeks of parental leave do I get?",
      ["people-group/time-off-and-absence/leave-types.md"]),
-    ("How does paid time off work at GitLab?", "paid time off",
+    ("How does paid time off work at GitLab?",
      ["people-group/time-off-and-absence/time-off-types.md", "people-group/time-off-and-absence/_index.md"]),
-    ("What are GitLab's core values?", "values CREDIT", ["values/_index.md"]),
-    ("How do I get my merge request reviewed and merged?", "merge request review",
-     ["engineering/workflow/code-review.md"]),
-    ("How do I report a security incident?", "report security incident",
+    ("What are GitLab's core values?", ["values/_index.md"]),
+    ("How do I get my merge request reviewed and merged?", ["engineering/workflow/code-review.md"]),
+    ("How do I report a security incident?",
      ["security/engaging-with-security.md", "security/security-operations/sirt/_index.md"]),
-    ("What is the expense policy for a new laptop?", "laptop expense", ["finance/expenses.md"]),
+    ("What is the expense policy for a new laptop?", ["finance/expenses.md"]),
 ]
 
-VECTOR_SQL = """
-    SELECT d.external_id, c.heading_path, 1 - (c.embedding <=> %(v)s) AS score
-    FROM chunks c JOIN documents d ON d.id = c.document_id
-    WHERE 'all' = ANY(c.allowed_roles)
-    ORDER BY c.embedding <=> %(v)s
-    LIMIT %(n)s
-"""
 
-KEYWORD_SQL = """
-    SELECT d.external_id, c.heading_path, ts_rank_cd(c.search_tsv, q) AS score
-    FROM chunks c JOIN documents d ON d.id = c.document_id,
-         websearch_to_tsquery('english', %(q)s) q
-    WHERE c.search_tsv @@ q AND 'all' = ANY(c.allowed_roles)
-    ORDER BY score DESC
-    LIMIT %(n)s
-"""
+def page_of(candidate: Candidate) -> str:
+    return candidate.url.removeprefix("https://handbook.gitlab.com/handbook/")
 
 
-def first_hit(rows, expected: list[str]) -> int | None:
-    return next((i + 1 for i, row in enumerate(rows) if row[0] in expected), None)
+def expected_rank(ranked: list[Candidate], expected: list[str]) -> int | None:
+    expected_urls = {e.removesuffix(".md").removesuffix("_index").rstrip("/") + "/" for e in expected}
+    return next((i + 1 for i, c in enumerate(ranked) if page_of(c) in expected_urls), None)
 
 
 def main() -> None:
-    with psycopg.connect(DATABASE_URL) as conn:
-        register_vector(conn)
+    get_model()  # load the model up front so timings below are search only
+    hits = {"vector": 0, "keyword": 0}
+
+    with connect() as conn:
         total = conn.execute("SELECT count(*) FROM chunks").fetchone()[0]
-        print(f"Searching {total:,} chunks\n")
+        print(f"Searching {total:,} chunks, top {CANDIDATES_PER_SEARCH} per search\n")
 
-        hits = {"vector": 0, "keyword": 0}
-        for question, keywords, expected in QUESTIONS:
-            vector_rows = conn.execute(VECTOR_SQL, {"v": embed([question])[0], "n": SEARCH_DEPTH}).fetchall()
-            keyword_rows = conn.execute(KEYWORD_SQL, {"q": keywords, "n": SEARCH_DEPTH}).fetchall()
+        for question, expected in QUESTIONS:
+            start = time.perf_counter()
+            candidates = hybrid_search(conn, question, ROLES)
+            ms = (time.perf_counter() - start) * 1000
 
-            print(f"Q: {question}\n   expected: {', '.join(expected)}")
-            for name, rows in (("vector", vector_rows), ("keyword", keyword_rows)):
-                rank = first_hit(rows, expected)
+            lists = {
+                "vector": sorted((c for c in candidates if c.vector_rank), key=lambda c: c.vector_rank),
+                "keyword": sorted((c for c in candidates if c.keyword_rank), key=lambda c: c.keyword_rank),
+            }
+            both = sum(1 for c in candidates if c.vector_rank and c.keyword_rank)
+            print(f"Q: {question}  ({ms:.0f} ms, {len(candidates)} candidates, {both} in both lists)")
+            for name, ranked in lists.items():
+                rank = expected_rank(ranked, expected)
                 hits[name] += rank is not None and rank <= TOP_K
-                found = f"rank {rank}" if rank else f"not in top {SEARCH_DEPTH}"
-                print(f"   {name:<8} expected page: {found}")
-                for external_id, heading, score in rows[:3]:
-                    print(f"            {score:.3f}  {heading[:80]}")
+                print(f"   {name:<8} expected page: {f'rank {rank}' if rank else 'not found'}"
+                      f"   | top: {ranked[0].heading_path[:70] if ranked else '-'}")
             print()
 
-        n = len(QUESTIONS)
-        print(f"Expected page in top {TOP_K}: vector {hits['vector']}/{n}, keyword {hits['keyword']}/{n}")
+    n = len(QUESTIONS)
+    print(f"Expected page in top {TOP_K}: vector {hits['vector']}/{n}, keyword {hits['keyword']}/{n}")
 
 
 if __name__ == "__main__":

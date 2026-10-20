@@ -230,6 +230,31 @@ python -m app.db.migrate
 
 All commands run from the project root.
 
+### 5. Langfuse tracing (optional)
+
+```bash
+docker compose -f docker-compose.langfuse.yml up -d
+```
+
+Opens at http://localhost:3100. It needs these settings in `.env` (generate random values for the secrets):
+
+```env
+LANGFUSE_HOST=http://localhost:3100
+LANGFUSE_PUBLIC_KEY=pk-lf-...        # any value; becomes the project's API key on first start
+LANGFUSE_SECRET_KEY=sk-lf-...
+LF_INIT_USER_EMAIL=admin@gitmore.local
+LF_INIT_USER_PASSWORD=...            # your Langfuse login
+LF_SALT=...
+LF_ENCRYPTION_KEY=...                # 64 hex characters: openssl rand -hex 32
+LF_NEXTAUTH_SECRET=...
+LF_POSTGRES_PASSWORD=...
+LF_CLICKHOUSE_PASSWORD=...
+LF_MINIO_PASSWORD=...
+LF_REDIS_PASSWORD=...
+```
+
+It runs 6 containers (web, worker, Postgres, ClickHouse, Redis, MinIO) separately from GitMore's database.
+
 ## 🗺️ Roadmap
 
 | | Step | |
