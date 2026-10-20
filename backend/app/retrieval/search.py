@@ -76,6 +76,13 @@ class Candidate:
     vector_score: float | None
     keyword_rank: int | None
     keyword_score: float | None
+    rrf_score: float = 0.0       # set by rank.rrf_merge
+    rerank_score: float = 0.0    # set by rank.rerank
+
+    @property
+    def embed_text(self) -> str:
+        """The same text that was embedded at ingestion: breadcrumb + content."""
+        return f"{self.heading_path}\n\n{self.content}"
 
     @property
     def link(self) -> str:

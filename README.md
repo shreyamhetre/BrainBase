@@ -200,6 +200,8 @@ LLM_BASE_URL=https://api.openai.com/v1
 LLM_MODEL=gpt-4o-mini
 ```
 
+After the models are downloaded once (the first ingest or search does it), add `HF_HUB_OFFLINE=1` to `.env` so they always load from the local cache.
+
 `.env` is git-ignored, so your keys never get committed. Changing `LLM_MODEL` or `LLM_BASE_URL` switches models with no code changes.
 
 ### 2. Start Postgres with pgvector

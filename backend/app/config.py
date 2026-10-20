@@ -16,3 +16,4 @@ MIGRATIONS_DIR = PROJECT_ROOT / "db" / "migrations"
 
 EMBEDDING_MODEL = "BAAI/bge-m3"
 EMBEDDING_DIM = 1024
+RERANK_MODEL = "BAAI/bge-reranker-v2-m3"

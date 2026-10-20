@@ -40,7 +40,8 @@
 
 - ⬜ OpenAI key added to .env (you add it; GPT-4o mini)
 - ✅ Hybrid search in one SQL query: vector (HNSW) + keyword (all-words first), permission filter in both WHERE clauses, ~200-400 ms (app/retrieval/search.py)
-- ⬜ Merge with RRF, rerank top 50 → top 5 (BGE Reranker v2-m3)
+- ✅ Duplicate BGE-M3 weights removed (4.25 → 2.14 GB); models load offline from cache (HF_HUB_OFFLINE=1 in .env)
+- ✅ RRF merge + BGE Reranker v2-m3 (top 50 → top 5): expected page in top 5 for 6/6 questions, up from 2/6 (app/retrieval/rank.py, retrieve.py)
 - ⬜ LangGraph graph with the knowledge route
 - ⬜ GPT-4o mini answer with citations
 - ⬜ First 20 evaluation questions
