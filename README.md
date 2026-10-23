@@ -1,192 +1,192 @@
 <p align="center">
-  <img src="docs/assets/gitmore-logo.png" alt="GitMore: one brain across your company's tools" width="480">
+  <img src="docs/assets/gitMore-readme.png" alt="GitMore: your company's knowledge, in one place" width="560">
 </p>
 
 <p align="center">
-  <b>Ask anything about the company. Get a cited answer from across the company's tools, filtered by who you are.</b>
+  <b>Ask anything about the company. Get a cited answer from across its tools, filtered by who you are.</b>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/status-in%20progress-f59e0b?style=for-the-badge" alt="Status: in progress">
-  <img src="https://img.shields.io/badge/python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python 3.11+">
-  <img src="https://img.shields.io/badge/postgres-18-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" alt="Postgres 18">
-  <img src="https://img.shields.io/badge/pgvector-0.8.7-7c3aed?style=for-the-badge" alt="pgvector 0.8.7">
+  <img src="https://img.shields.io/badge/status-in%20progress-f59e0b" alt="Status: in progress">
+  <img src="https://img.shields.io/badge/python-3.11+-3776AB?logo=python&logoColor=white" alt="Python 3.11+">
+  <img src="https://img.shields.io/badge/postgres-18%20%2B%20pgvector-4169E1?logo=postgresql&logoColor=white" alt="Postgres 18 with pgvector">
+  <img src="https://img.shields.io/badge/next.js-16-000000?logo=nextdotjs&logoColor=white" alt="Next.js 16">
 </p>
 
 <p align="center">
-  <a href="#-how-it-works">How it works</a> ·
-  <a href="#-tech-stack">Tech stack</a> ·
-  <a href="#-getting-started">Getting started</a> ·
-  <a href="#-roadmap">Roadmap</a> ·
-  <a href="docs/project-plan.md">Full plan</a>
+  <a href="#overview">Overview</a> ·
+  <a href="#architecture">Architecture</a> ·
+  <a href="#access-control">Access control</a> ·
+  <a href="#tech-stack">Tech stack</a> ·
+  <a href="#getting-started">Getting started</a> ·
+  <a href="#roadmap">Roadmap</a> ·
+  <a href="docs/project-plan.md">Project plan</a>
 </p>
 
 ---
 
-## 🦊 What is GitMore?
+## Overview
 
-GitMore is a **company brain**: one chat interface over everything a company knows, spread across its handbook, docs, issues, meetings, Slack and Google Docs.
+GitMore is a company brain: one chat interface over everything a company knows, spread across its handbook, wiki, issues and chat.
 
-It's built around GitLab, a ~2,000-person remote company, using its **real public handbook, docs and issues** plus **synthetic Slack threads, Google Docs and confidential GitLab issues** that reference the real content, so it all feels like one company. These mirror the tools GitLab actually uses.
+It is built around GitLab, a remote company of about 2,000 people, using its **real public handbook** together with **synthetic Slack threads, wiki pages and confidential GitLab issues** that reference the real content, so the sources read like one company. The synthetic sources mirror the tools GitLab actually uses.
 
 > [!NOTE]
 > GitMore is an unofficial learning project. It is not affiliated with or endorsed by GitLab.
 
-## ✨ Features
+### Features
 
-| | |
+| Feature | Description |
 |---|---|
-| 🔎 **Hybrid search** | Vector search for meaning plus keyword search for exact terms, merged with reciprocal rank fusion |
-| 📌 **Cited answers** | Every claim links to the exact source passage it came from |
-| 🔐 **Real permissions** | Each chunk knows who can see it; restricted text never reaches the LLM |
-| 🧭 **One question box** | A router decides whether to search, act or ask you to clarify |
-| ⚖️ **Conflict detection** | When sources disagree, the newer one wins and you're warned |
-| 🙅 **Honest "I don't know"** | Says so when there's no evidence, instead of guessing |
-| 🧑‍💻 **Who knows this?** | Suggests the people with expertise on a topic |
-| ⚡ **Actions through MCP** | Create a GitLab issue, post to Slack or draft a Google Doc, after you confirm |
-| 📊 **Measured quality** | A 90-question evaluation set, rerun after every change |
+| Hybrid search | Vector search for meaning and keyword search for exact terms, merged with reciprocal rank fusion |
+| Reranking | A cross-encoder reads the top candidates closely and keeps the best five |
+| Cited answers | Every claim links to the passage it came from |
+| Role-based access | Each chunk records which roles may read it; restricted text never reaches the LLM |
+| Admin console | Admins assign roles and deactivate accounts, with a confirmation before every change |
+| Honest "I don't know" | Says so when there is no evidence instead of guessing |
+| Measured quality | An evaluation set rerun after every change |
+| Tracing | Every question traced in Langfuse: retrieved chunks, prompt, tokens, cost and latency |
 
-## 🧠 How it works
+## Architecture
 
-GitMore has two halves: **ingestion** prepares all content ahead of time, and the **query path** runs for every message. Postgres is the shared index that connects them.
-
-### 1. Ingestion (runs on a schedule)
+GitMore has two halves. **Ingestion** prepares content ahead of time; the **query path** runs for every question. Postgres is the shared index between them.
 
 ```mermaid
 flowchart LR
-    subgraph SRC["📥 Sources"]
+    subgraph Sources
         direction TB
-        H["📘 Handbook"]
-        D["📗 Product docs"]
-        I["🐛 Issues & MRs"]
-        M["🎙️ Meetings"]
-        SL["💬 Slack"]
-        N["📝 Google Docs"]
-        J["🔒 Confidential issues"]
+        H[GitLab handbook]
+        W[Wiki pages]
+        I[GitLab issues<br/>incl. confidential]
+        S[Slack threads]
     end
 
-    SRC --> SY["🔄 Sync<br/>new · changed · deleted"]
-    SY --> P["📄 Parse"]
-    P --> C["✂️ Chunk"]
-    C --> MD["🏷️ Metadata +<br/>permissions"]
-    MD --> E["🧮 Embed<br/>BGE-M3"]
-    E --> DB[("🐘 Postgres<br/>pgvector + full-text")]
+    subgraph Ingestion
+        direction TB
+        P[Parse and clean] --> C[Chunk by heading]
+        C --> M[Attach metadata<br/>and allowed roles]
+        M --> E[Embed<br/>BGE-M3]
+    end
 
-    classDef src fill:#eef2ff,stroke:#6366f1,color:#1e1b4b
-    classDef step fill:#f5f3ff,stroke:#8b5cf6,color:#2e1065
-    classDef store fill:#7c3aed,stroke:#4c1d95,color:#ffffff
-    class H,D,I,M,SL,N,J src
-    class SY,P,C,MD,E step
+    Sources --> P
+    E --> DB[(Postgres<br/>pgvector + full-text)]
+
+    classDef store fill:#1e2a4a,stroke:#1e2a4a,color:#ffffff
+    classDef step fill:#fff4ec,stroke:#fc6d26,color:#1b2140
     class DB store
+    class P,C,M,E step
 ```
 
-- **Sync** fetches only new or changed content, and removes deleted docs, so stale answers don't pile up.
-- **Metadata + permissions** are copied onto every chunk: source, URL, date, author and which roles can see it.
+- **Metadata** is copied onto every chunk: source, URL, heading path, date, author, design-document status and the roles allowed to read it.
+- **Selection rules** keep the handbook focused: recently changed pages, core policy sections and implemented design documents. About 25,000 chunks in total.
 
-### 2. Query (runs for every message)
+### Query path
 
 ```mermaid
 flowchart TD
-    Q(["🙋 Message + your role"]) --> RT{"🧭 LangGraph router<br/>what does this need?"}
+    U([Question + user's roles]) --> API[FastAPI<br/>JWT cookie checked]
+    API --> G[LangGraph<br/>retrieve, then answer]
+    G --> EQ[Embed question<br/>BGE-M3]
 
-    RT -- "knowledge" --> RW["✏️ Rewrite query"]
-    RW --> EQ["🧮 Embed question<br/>same BGE-M3 model"]
-
-    subgraph PG["🐘 Postgres: one query, permission filter in the WHERE clause"]
+    subgraph PG[Postgres: one query, role filter in the WHERE clause]
         direction LR
-        V["🧭 Vector search"]
-        K["🔤 Keyword search"]
+        V[Vector search]
+        K[Keyword search]
     end
 
     EQ --> V
-    RW --> K
-    V --> RRF["🔀 Merge with RRF"]
-    K --> RRF
-    RRF --> RR["🏅 Rerank<br/>top 50 → top 5<br/>BGE v2-m3"]
-    RT -- "action" --> ACT["⚡ Action card<br/>you confirm"]
-    RR -. "context, if the action needs it" .-> ACT
-    ACT --> MCPW["🔌 MCP write<br/>ticket · post · page"]
-    RT -- "unclear" --> CL["💭 Ask a<br/>clarifying question"]
+    G --> K
+    V --> F[Reciprocal rank fusion]
+    K --> F
+    F --> RR[Rerank<br/>top 30 to top 5]
+    RR --> L[GPT-4o mini<br/>answer with citations]
+    L --> A([Answer + sources])
 
-    RR --> LLM["🤖 LLM answer<br/>with citations"]
-    MCPW --> LLM
-    LLM --> A(["💬 Streamed answer<br/>+ sources + freshness"])
-    CL --> A
-
-    classDef io fill:#7c3aed,stroke:#4c1d95,color:#ffffff
-    classDef step fill:#f5f3ff,stroke:#8b5cf6,color:#2e1065
-    classDef route fill:#fef9c3,stroke:#ca8a04,color:#422006
-    classDef act fill:#fff7ed,stroke:#f97316,color:#7c2d12
-    class Q,A io
-    class RT route
-    class RW,EQ,V,K,RRF,RR,LLM,CL step
-    class ACT,MCPW act
-    style PG fill:#eef2ff,stroke:#6366f1,color:#1e1b4b
+    classDef io fill:#1e2a4a,stroke:#1e2a4a,color:#ffffff
+    classDef step fill:#fff4ec,stroke:#fc6d26,color:#1b2140
+    class U,A io
+    class API,G,EQ,V,K,F,RR,L step
+    style PG fill:#f7f7fb,stroke:#5d647e,color:#1b2140
 ```
 
-- **The router decides the route**, so users never pick a tool or type a command. One question box for everything.
-- **Knowledge comes from the index through RAG; actions go through MCP.** A single request can use both: "Summarize the PTO policy and post it to #hr" searches first, then acts.
-- **Unclear messages get a clarifying question** instead of a search, such as greetings or vague requests.
-- **Every action needs your confirmation** before anything is written to Slack, GitLab or Google Docs.
-- **Permissions apply to every answer:** all reads come from indexed, permission-tagged data, filtered inside the same SQL query as the search, so restricted chunks are never retrieved. MCP is used only for writes, not for reading live data.
-- **Same embedding model** for chunks and questions, or vector search won't match.
-- **RRF** (reciprocal rank fusion) combines the vector and keyword lists by rank, then the **reranker** reads the top 50 closely and keeps the best 5.
-- **Langfuse traces every step**: route chosen, retrieved chunks, prompt, tokens, cost and latency.
+- **The same embedding model** encodes chunks and questions, otherwise vector search would not match.
+- **Fusion** combines the vector and keyword result lists by rank; the **reranker** then reads the pool closely and keeps the best five.
+- **The permission filter runs inside the search query**, so restricted chunks are never retrieved, never ranked and never sent to the model.
 
-## 🛠️ Tech stack
+### Planned extensions
 
-<p align="center">
-  <img src="https://skillicons.dev/icons?i=python,fastapi,postgres,docker,nextjs,ts&theme=dark" alt="Python, FastAPI, Postgres, Docker, Next.js, TypeScript">
-</p>
+- Query rewriting and follow-up questions that use the conversation history.
+- A router that sends each message to search, an action, or a clarifying question.
+- Actions through MCP (create an issue, post to Slack), always confirmed by the user first.
+- Conflict detection when sources disagree, preferring the newer one and warning the user.
+
+## Access control
+
+```mermaid
+flowchart LR
+    L[Log in<br/>@gitmore.com only] --> T[JWT in an<br/>httpOnly cookie]
+    T --> Q[Each request reads<br/>roles from the database]
+    Q --> F[Search filtered to<br/>chunks the roles allow]
+    AD[Admin console] -->|confirmed change| DB[(users table)]
+    DB --> Q
+```
+
+| Role | Unlocks |
+|---|---|
+| everyone | The public handbook |
+| engineer | Engineering channels and issues |
+| hr | HR-only documents such as salary bands |
+| manager | Leadership and restructuring plans |
+| security | Security incidents and confidential security issues |
+| sales | Sales channels and deals |
+
+- New sign-ups get handbook access only; an admin grants roles.
+- The admin holds every role. Admins cannot deactivate themselves.
+- Roles are read from the database on every request, so a change takes effect immediately.
+
+## Tech stack
 
 | Layer | Tool | Why |
 |---|---|---|
-| 🐍 Language | ![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white) | Best RAG ecosystem |
-| 🚀 Backend API | ![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white) | Simple, async, streaming |
-| 📄 Parsing | ![Markdown](https://img.shields.io/badge/Markdown-000000?logo=markdown&logoColor=white) ![Docling](https://img.shields.io/badge/Docling-PDFs-555555) | Keeps headings and tables |
-| 🧮 Embeddings | ![Hugging Face](https://img.shields.io/badge/BGE--M3-FFD21E?logo=huggingface&logoColor=black) ![sentence-transformers](https://img.shields.io/badge/sentence--transformers-555555) ![PyTorch](https://img.shields.io/badge/PyTorch_CUDA-EE4C2C?logo=pytorch&logoColor=white) | Strong, multilingual, 8,192-token input, runs on a local GPU |
-| 🐘 Vector + keyword DB | ![PostgreSQL](https://img.shields.io/badge/Postgres_18-4169E1?logo=postgresql&logoColor=white) ![pgvector](https://img.shields.io/badge/pgvector-7c3aed) | Vectors, full-text, metadata and users in one database |
-| 🏅 Reranker | ![Hugging Face](https://img.shields.io/badge/BGE_Reranker_v2--m3-FFD21E?logo=huggingface&logoColor=black) | Free, fast, proven baseline |
-| 🤖 LLM | ![OpenAI](https://img.shields.io/badge/GPT--4o_mini-412991?logo=openai&logoColor=white) | Cheap, fast, good at grounded answers |
-| 🕸️ Orchestration | ![LangGraph](https://img.shields.io/badge/LangGraph-1C3C3C?logo=langchain&logoColor=white) | Steps as a graph with state, branching and retries |
-| 🔌 Connectors + actions | ![MCP](https://img.shields.io/badge/MCP-000000?logo=modelcontextprotocol&logoColor=white) | Standard way to give agents tools; used for writes only |
-| ⏰ Background sync | ![APScheduler](https://img.shields.io/badge/APScheduler-555555) | Incremental re-sync of sources |
-| 🖥️ Frontend | ![Next.js](https://img.shields.io/badge/Next.js-000000?logo=nextdotjs&logoColor=white) | Streaming chat and admin console |
-| 📊 Evaluation | ![RAGAS](https://img.shields.io/badge/RAGAS-555555) | Context precision, recall, faithfulness |
-| 📈 Tracing | ![Langfuse](https://img.shields.io/badge/Langfuse-0A0A0A) | Chunks, prompt, tokens, cost and latency per question |
-| 🐳 Packaging | ![Docker](https://img.shields.io/badge/Docker_Compose-2496ED?logo=docker&logoColor=white) | One command to run it all |
+| Language | Python 3.11+ | The strongest RAG ecosystem |
+| Backend API | FastAPI | Simple, async, typed |
+| Database | Postgres 18 + pgvector | Vectors, full-text search, metadata and users in one place |
+| Embeddings | BGE-M3 (sentence-transformers, PyTorch CUDA) | Strong, multilingual, 8,192-token input, runs on a local GPU |
+| Reranker | BGE Reranker v2-m3 | Free, fast, proven baseline |
+| LLM | GPT-4o mini | Inexpensive, fast and good at grounded answers |
+| Orchestration | LangGraph | Steps as a graph with state and branching |
+| Auth | JWT, bcrypt | Stateless sessions in an httpOnly cookie |
+| Frontend | Next.js 16, TypeScript, Tailwind CSS | Chat and admin console, responsive on all screen sizes |
+| Tracing | Langfuse (self-hosted) | Chunks, prompt, tokens, cost and latency per question |
+| Packaging | Docker Compose | One command for the database |
 
 ### Data sources
 
-| Source | | Type | Tests |
-|---|---|---|---|
-| ![GitLab](https://img.shields.io/badge/Handbook-FC6D26?logo=gitlab&logoColor=white) | 📘 | Real | Policies, onboarding, long docs |
-| ![GitLab](https://img.shields.io/badge/Product_docs-FC6D26?logo=gitlab&logoColor=white) | 📗 | Real | Technical how-to answers |
-| ![GitLab](https://img.shields.io/badge/Issues_&_MRs-FC6D26?logo=gitlab&logoColor=white) | 🐛 | Real | Discussions, decisions, freshness |
-| ![YouTube](https://img.shields.io/badge/Unfiltered_meetings-FF0000?logo=youtube&logoColor=white) | 🎙️ | Real, transcribed | Spoken, messy text |
-| ![Slack](https://img.shields.io/badge/Slack-4A154B?logo=slack&logoColor=white) | 💬 | Synthetic | Chat threads, informal answers |
-| ![Google Docs](https://img.shields.io/badge/Google_Docs-4285F4?logo=googledocs&logoColor=white) | 📝 | Synthetic | Meeting notes, plans, an HR-only doc |
-| ![GitLab](https://img.shields.io/badge/Confidential_issues-FC6D26?logo=gitlab&logoColor=white) | 🔒 | Synthetic | Internal tickets linked to real issues |
+| Source | Type | What it tests |
+|---|---|---|
+| GitLab handbook | Real | Policies, onboarding, long documents |
+| Slack threads | Synthetic | Informal answers, outdated answers |
+| Wiki pages | Synthetic | Internal plans and restricted documents |
+| GitLab issues | Synthetic, two confidential | Tickets linked to Slack discussions |
 
-## 🚀 Getting started
+The synthetic content includes deliberate traps: an outdated PTO answer in Slack, HR-only salary bands, a managers-only restructuring plan and a security-only incident.
+
+## Getting started
 
 ### Prerequisites
 
-- 🐳 [Docker Desktop](https://www.docker.com/products/docker-desktop/). On Windows it needs WSL2 and virtualization enabled in BIOS.
-- 🐍 Python 3.11+ (developed on 3.14)
-- 🎮 An NVIDIA GPU is recommended for embedding (CPU works, much slower)
-- 🌿 Git
-- 🔑 An OpenAI API key
-- 🟢 Node.js 20+ (later, for the frontend)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (on Windows it needs WSL2 and virtualization enabled in BIOS)
+- Python 3.11+
+- Node.js 20+
+- An OpenAI API key
+- An NVIDIA GPU is recommended for embedding; CPU works but is much slower
 
-### 1. Create `.env` from the example
+### 1. Configure `.env`
 
 ```bash
 cp .env.example .env        # macOS/Linux
 copy .env.example .env      # Windows
 ```
-
-Then fill in your values:
 
 ```env
 POSTGRES_USER=your_user
@@ -198,20 +198,25 @@ DATABASE_URL=postgresql://your_user:your_password@localhost:5432/company_db
 OPENAI_API_KEY=
 LLM_BASE_URL=https://api.openai.com/v1
 LLM_MODEL=gpt-4o-mini
+
+JWT_SECRET=                    # long random string
+JWT_EXPIRE_HOURS=24
+ALLOWED_EMAIL_DOMAIN=gitmore.com
+ADMIN_EMAIL=you@gitmore.com
+ADMIN_PASSWORD=
+DEMO_USER_PASSWORD=            # shared password for the 20 demo people
 ```
 
-After the models are downloaded once (the first ingest or search does it), add `HF_HUB_OFFLINE=1` to `.env` so they always load from the local cache.
+`.env` is git-ignored. Changing `LLM_MODEL` or `LLM_BASE_URL` switches models without code changes. After the models download once, add `HF_HUB_OFFLINE=1` so they always load from the local cache.
 
-`.env` is git-ignored, so your keys never get committed. Changing `LLM_MODEL` or `LLM_BASE_URL` switches models with no code changes.
-
-### 2. Start Postgres with pgvector
+### 2. Start Postgres
 
 ```bash
 docker compose up -d
 ```
 
 > [!TIP]
-> The database user, password and name are created on the **first start only**. Data lives in a Docker volume and survives restarts; `docker compose down -v` deletes it.
+> The database user, password and name are created on the first start only. Data lives in a Docker volume and survives restarts; `docker compose down -v` deletes it.
 
 ### 3. Python environment
 
@@ -221,140 +226,122 @@ python -m venv .venv
 source .venv/bin/activate         # macOS/Linux
 pip install -r backend/requirements.txt        # NVIDIA GPU (CUDA 12.8)
 pip install -r backend/requirements-cpu.txt    # no NVIDIA GPU
-pip install -e backend                         # makes the backend's `app` package importable
+pip install -e backend
 ```
 
-### 4. Create the tables
-
-```bash
-python -m app.db.migrate
-```
+### 4. Create tables, ingest and seed users
 
 All commands run from the project root.
 
-### 5. Create the users
-
-Add to `.env`:
-
-```env
-JWT_SECRET=...                 # long random string
-JWT_EXPIRE_HOURS=24
-ALLOWED_EMAIL_DOMAIN=gitmore.com   # only company emails can sign up or log in
-ADMIN_EMAIL=you@gitmore.com    # your admin login
-ADMIN_PASSWORD=...
-DEMO_USER_PASSWORD=...         # shared password for the 20 demo people
-```
-
 ```bash
+python -m app.db.migrate
+python -m app.ingestion.ingest_handbook
 python backend/scripts/seed_users.py
 ```
 
-This creates the admin and the 20 invented people in [data/synthetic/people.json](data/synthetic/people.json) (emails like `priya.sharma@gitmore.com`). Sign-up and login only accept emails at `ALLOWED_EMAIL_DOMAIN`, checked in the backend.
+This creates the admin and the 20 people in [data/synthetic/people.json](data/synthetic/people.json), with emails such as `priya.sharma@gitmore.com`. Sign-up and login only accept emails at `ALLOWED_EMAIL_DOMAIN`, checked in the backend.
 
-### 6. Run GitMore
+### 5. Run GitMore
 
 ```bash
-uvicorn app.api.main:app --reload --reload-dir backend/app   # backend on :8000 (API docs at /docs)
+uvicorn app.api.main:app --reload --reload-dir backend/app   # API on :8000, docs at /docs
 cd frontend && npm install && npm run dev                      # web app on http://localhost:3000
 ```
 
-Log in as the admin to manage roles at `/admin`, or as a demo person to see answers for their role. From the command line: `python -m app.ask "How many weeks of parental leave do I get?"`.
+Log in as the admin to manage roles at `/admin`, or as a demo person to see answers for their role. From the command line:
 
-Test questions with expected sources: [eval/questions.md](eval/questions.md).
+```bash
+python -m app.ask "How many weeks of parental leave do I get?"
+```
 
-### 7. Langfuse tracing (optional)
+### 6. Tracing (optional)
 
 ```bash
 docker compose -f docker-compose.langfuse.yml up -d
 ```
 
-Opens at http://localhost:3100. It needs these settings in `.env` (generate random values for the secrets):
+Langfuse opens at http://localhost:3100 and runs six containers separately from GitMore's database. It needs these settings in `.env`:
 
 ```env
 LANGFUSE_BASE_URL=http://localhost:3100
-LANGFUSE_PUBLIC_KEY=pk-lf-...        # any value; becomes the project's API key on first start
+LANGFUSE_PUBLIC_KEY=pk-lf-...
 LANGFUSE_SECRET_KEY=sk-lf-...
 LF_INIT_USER_EMAIL=admin@gitmore.local
-LF_INIT_USER_PASSWORD=...            # your Langfuse login
-LF_SALT=...
-LF_ENCRYPTION_KEY=...                # 64 hex characters: openssl rand -hex 32
-LF_NEXTAUTH_SECRET=...
-LF_POSTGRES_PASSWORD=...
-LF_CLICKHOUSE_PASSWORD=...
-LF_MINIO_PASSWORD=...
-LF_REDIS_PASSWORD=...
+LF_INIT_USER_PASSWORD=
+LF_SALT=
+LF_ENCRYPTION_KEY=                   # 64 hex characters: openssl rand -hex 32
+LF_NEXTAUTH_SECRET=
+LF_POSTGRES_PASSWORD=
+LF_CLICKHOUSE_PASSWORD=
+LF_MINIO_PASSWORD=
+LF_REDIS_PASSWORD=
 ```
 
-It runs 6 containers (web, worker, Postgres, ClickHouse, Redis, MinIO) separately from GitMore's database.
+## Evaluation
 
-## 🗺️ Roadmap
+`python backend/scripts/evaluate.py` runs the questions in [eval/questions.md](eval/questions.md) and saves each run to `eval/results/`.
 
-| | Step | |
-|---|---|---|
-| 1 | 🐘 Project setup, Postgres + pgvector in Docker | ✅ |
-| 2 | 📥 Ingest the handbook: parse, chunk, embed, store (permission columns included, default everyone) | ✅ |
-| 3 | 🔎 Query path: LangGraph knowledge route, hybrid search, RRF, rerank, cited answers, first 20 eval questions, Langfuse tracing | ✅ |
-| 4 | 📊 Evaluation: 10 key questions, baseline scores (hit@5 9/9, MRR 0.81), known limitations recorded | ✅ |
-| 5 | 📗 Add product docs and issues | skipped |
-| 6 | 💬 Synthetic Slack, GitLab wiki and confidential GitLab issues through connector sync + login and role-based access (RBAC) | ⏳ |
-| 7 | 🖥️ Next.js chat and admin console | ⏳ |
-| 8 | ⚡ Action route (MCP writes with confirmation), clarify route and stretch goals | |
+**Current baseline** (handbook, 10 questions):
 
-## 📊 Evaluation
-
-Quality is measured, not guessed. `python backend/scripts/evaluate.py` runs the questions in [eval/questions.md](eval/questions.md) and records each run. It starts with the 10 most important handbook questions and grows as sources arrive: cross-source, expertise, conflicting sources, routing and permissions.
-
-**Current baseline:** right page in the top 5 for 9/9 answerable questions, MRR 0.81, the right page cited 9/9, the no-answer question handled correctly, ~4.3 s per question. Known limitations are listed with the results.
-
-| Metric | What it checks |
+| Metric | Result |
 |---|---|
-| 🎯 Hit rate @5 | The right chunk is in the top 5 results |
-| 🥇 MRR | How high the right chunk ranks |
-| ✅ Faithfulness | The answer sticks to its sources |
-| 📌 Citation accuracy | Cited passages actually support the claim |
-| 🧭 Routing accuracy | Messages go to the right route: knowledge, action, both or clarify |
-| 🔐 Permission leaks | Must stay at **zero** |
-| ⏱️ Latency | Median and p95 time to first token |
+| Right page in the top 5 (hit@5) | 9 / 9 |
+| Mean reciprocal rank | 0.81 |
+| Right page cited | 9 / 9 |
+| No-answer question handled | 1 / 1 |
+| Time per question | about 4.3 s |
 
-## 📁 Project structure
+Permission, conflict and expertise questions are added as the synthetic sources are indexed. The target for permission leaks is zero.
+
+## Roadmap
+
+| Step | Scope | Status |
+|---|---|---|
+| 1 | Project setup, Postgres and pgvector in Docker | Done |
+| 2 | Handbook ingestion: parse, chunk, embed, store with permission columns | Done |
+| 3 | Query path: hybrid search, fusion, rerank, cited answers, Langfuse tracing | Done |
+| 4 | Evaluation baseline | Done |
+| 5 | Product docs and public issues | Skipped |
+| 6 | Login and role-based access, synthetic Slack, wiki and issues published; connectors into the index | In progress |
+| 7 | Next.js chat and admin console | In progress |
+| 8 | Router, MCP actions with confirmation, clarifying questions | Planned |
+
+## Project structure
 
 ```
-Company_Brain/
+GitMore/
 ├── backend/
-│   ├── app/               the Python package
-│   │   ├── config.py      settings from .env
-│   │   ├── api/           HTTP routes
-│   │   ├── ingestion/     selection rules, cleaning, chunking, embedding
-│   │   ├── retrieval/     hybrid search, RRF, rerank, permission filter
-│   │   ├── generation/    prompts, LLM calls, citations
-│   │   └── db/            migration runner and database access
-│   ├── scripts/           inspection and check scripts (not part of the app)
-│   ├── tests/
-│   ├── pyproject.toml     makes `app` installable (pip install -e backend)
+│   ├── app/
+│   │   ├── api/           FastAPI routes: ask, auth, admin
+│   │   ├── auth.py        JWT cookies, password hashing, role checks
+│   │   ├── ingestion/     selection rules, cleaning, chunking
+│   │   ├── retrieval/     hybrid search, fusion, rerank, permission filter
+│   │   ├── generation/    prompt, LLM call, citations
+│   │   ├── graph.py       LangGraph pipeline
+│   │   └── db/            connection and migration runner
+│   ├── scripts/           seeding, publishing, evaluation and inspection scripts
 │   └── requirements*.txt  GPU, CPU and shared dependencies
-├── frontend/              Next.js chat and admin console (later)
+├── frontend/              Next.js chat and admin console
 ├── db/
-│   ├── init/              SQL run on first database start (enables pgvector)
-│   └── migrations/        numbered schema changes, applied once each
+│   ├── init/              runs on first database start (enables pgvector)
+│   └── migrations/        numbered schema changes
 ├── data/
 │   ├── raw/               cloned sources (git-ignored)
-│   └── synthetic/         generated Slack / Google Docs / issue data
+│   └── synthetic/         people, Slack, wiki and issue data
 ├── eval/                  evaluation questions and results
 ├── docs/                  project plan and assets
-├── .env                   your settings, shared by Docker Compose and the backend (git-ignored)
 └── docker-compose.yml
 ```
 
-## 📜 Data and licenses
+## Data and licenses
 
-- **GitLab Handbook** ([gitlab-com/content-sites/handbook](https://gitlab.com/gitlab-com/content-sites/handbook)): the repository is published under the MIT License, Copyright (c) 2011-present GitLab B.V.
-- **GitLab product docs** (`doc/` in [gitlab-org/gitlab](https://gitlab.com/gitlab-org/gitlab)): licensed under [Creative Commons CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).
-- **Slack threads, Google Docs and confidential issues** in this project are synthetic and invented for testing.
+- **GitLab Handbook** ([gitlab-com/content-sites/handbook](https://gitlab.com/gitlab-com/content-sites/handbook)) is published under the MIT License, Copyright (c) 2011-present GitLab B.V.
+- **Slack threads, wiki pages, issues and people** in this repository are synthetic and invented for testing.
 
 Raw GitLab content is downloaded locally into `data/raw/` and is not redistributed in this repository.
 
 ---
 
 <p align="center">
-  Built by <a href="https://github.com/shreyamhetre">Shreya Mhetre</a> as a hands-on way to learn RAG, hybrid search, permissions and agents.
+  Built by <a href="https://github.com/shreyamhetre">Shreya Mhetre</a> to learn RAG, hybrid search, access control and agents end to end.
 </p>
