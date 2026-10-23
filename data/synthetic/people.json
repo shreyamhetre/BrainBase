@@ -1,0 +1,25 @@
+{
+  "_about": "Invented cast for GitMore's synthetic Slack, issues and wiki. Not real people. Roles match backend/app/config.py CONTENT_ROLES; managers also hold their department's role.",
+  "people": [
+    {"name": "Marcus Bennett",    "email": "marcus.bennett@gitmore.example",    "title": "VP of Engineering",                       "team": "Engineering Leadership", "roles": ["engineer", "manager"], "handle": "marcus.bennett"},
+    {"name": "Rachel Cohen",      "email": "rachel.cohen@gitmore.example",      "title": "Engineering Manager",                     "team": "Delivery",               "roles": ["engineer", "manager"], "handle": "rachel.cohen"},
+    {"name": "Oluwaseun Adeyemi", "email": "oluwaseun.adeyemi@gitmore.example", "title": "Engineering Manager",                     "team": "Create: Code Review",    "roles": ["engineer", "manager"], "handle": "oluwaseun.adeyemi"},
+    {"name": "Arjun Mehta",       "email": "arjun.mehta@gitmore.example",       "title": "Senior Backend Engineer",                 "team": "Delivery",               "roles": ["engineer"],            "handle": "arjun.mehta"},
+    {"name": "Lena Fischer",      "email": "lena.fischer@gitmore.example",      "title": "Backend Engineer",                        "team": "Delivery",               "roles": ["engineer"],            "handle": "lena.fischer"},
+    {"name": "Daniel Kim",        "email": "daniel.kim@gitmore.example",        "title": "Site Reliability Engineer",               "team": "Delivery",               "roles": ["engineer"],            "handle": "daniel.kim"},
+    {"name": "Tomás Rivera",      "email": "tomas.rivera@gitmore.example",      "title": "Senior Frontend Engineer",                "team": "Create: Code Review",    "roles": ["engineer"],            "handle": "tomas.rivera"},
+    {"name": "Aiko Tanaka",       "email": "aiko.tanaka@gitmore.example",       "title": "Fullstack Engineer",                      "team": "Create: Code Review",    "roles": ["engineer"],            "handle": "aiko.tanaka"},
+    {"name": "Kwame Mensah",      "email": "kwame.mensah@gitmore.example",      "title": "Backend Engineer",                        "team": "Plan",                   "roles": ["engineer"],            "handle": "kwame.mensah"},
+    {"name": "Meera Iyer",        "email": "meera.iyer@gitmore.example",        "title": "Staff Backend Engineer",                  "team": "Data Stores",            "roles": ["engineer"],            "handle": "meera.iyer"},
+    {"name": "Sofia Rossi",       "email": "sofia.rossi@gitmore.example",       "title": "Database Reliability Engineer",           "team": "Data Stores",            "roles": ["engineer"],            "handle": "sofia.rossi"},
+    {"name": "Hannah Lindqvist",  "email": "hannah.lindqvist@gitmore.example",  "title": "Senior Manager, People Operations",       "team": "People",                 "roles": ["hr", "manager"],       "handle": "hannah.lindqvist"},
+    {"name": "Priya Sharma",      "email": "priya.sharma@gitmore.example",      "title": "People Business Partner",                 "team": "People",                 "roles": ["hr"],                  "handle": "priya.sharma"},
+    {"name": "Carlos Mendes",     "email": "carlos.mendes@gitmore.example",     "title": "Total Rewards Analyst",                   "team": "People",                 "roles": ["hr"],                  "handle": "carlos.mendes"},
+    {"name": "Nadia Haddad",      "email": "nadia.haddad@gitmore.example",      "title": "Security Incident Response Engineer",     "team": "Security Operations",    "roles": ["security"],            "handle": "nadia.haddad"},
+    {"name": "Victor Petrov",     "email": "victor.petrov@gitmore.example",     "title": "Application Security Engineer",           "team": "Product Security",       "roles": ["security"],            "handle": "victor.petrov"},
+    {"name": "James O'Connor",    "email": "james.oconnor@gitmore.example",     "title": "Sales Manager, Enterprise EMEA",          "team": "Sales",                  "roles": ["sales", "manager"],    "handle": "james.oconnor"},
+    {"name": "Emily Watson",      "email": "emily.watson@gitmore.example",      "title": "Enterprise Account Executive",            "team": "Sales",                  "roles": ["sales"],               "handle": "emily.watson"},
+    {"name": "Ravi Kumar",        "email": "ravi.kumar@gitmore.example",        "title": "Solutions Architect",                     "team": "Sales",                  "roles": ["sales"],               "handle": "ravi.kumar"},
+    {"name": "Grace Liu",         "email": "grace.liu@gitmore.example",         "title": "Sales Development Representative",       "team": "Sales",                  "roles": ["sales"],               "handle": "grace.liu"}
+  ]
+}

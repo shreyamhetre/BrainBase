@@ -1,0 +1,74 @@
+{
+  "_about": "Synthetic issues for the private GitLab group. Created in this order, so each project's issue numbers (iid) match the references in slack.json (engineering#1 is the first engineering issue). 'author' and comment authors are handles from people.json, recorded in a hidden note because everything is posted by one account. 'created_at' is set through the API (allowed for project owners).",
+  "project_access": {
+    "company-wiki": ["all"],
+    "engineering":  ["engineer", "manager"],
+    "security":     ["security"],
+    "people-ops":   ["hr"],
+    "leadership":   ["hr", "manager"],
+    "sales":        ["sales", "manager"]
+  },
+  "issues": [
+    {"project": "engineering", "title": "QA stage times out on the staging deploy pipeline",
+     "author": "arjun.mehta", "assignees": ["arjun.mehta", "daniel.kim"], "labels": ["type::bug", "group::delivery", "pipeline"],
+     "created_at": "2026-05-20T11:15:00Z", "state": "closed", "confidential": false,
+     "description": "The QA job in the staging deploy pipeline times out after 30 minutes. Started after the runner pool change last week.\n\n**Stopgap:** timeout raised to 45 minutes.\n**Fix:** split the QA job into parallel jobs so each finishes well under the limit.",
+     "comments": [
+       {"author": "daniel.kim", "date": "2026-05-20T11:45:00Z", "body": "Runner pool for the QA stage was scaled down by mistake. Scaled back to 12 runners."},
+       {"author": "arjun.mehta", "date": "2026-05-23T16:00:00Z", "body": "QA job split into 4 parallel jobs. Longest one now takes 11 minutes. Closing."}
+     ]},
+    {"project": "engineering", "title": "Document the release checklist for new release managers",
+     "author": "rachel.cohen", "assignees": ["arjun.mehta"], "labels": ["type::maintenance", "group::delivery", "documentation"],
+     "created_at": "2026-06-03T09:00:00Z", "state": "closed", "confidential": false,
+     "description": "New release managers keep asking the same questions. Write down the steps we follow for the monthly release, linking to the handbook page on release managers: https://handbook.gitlab.com/handbook/engineering/releases/release-managers/",
+     "comments": [
+       {"author": "arjun.mehta", "date": "2026-06-12T10:00:00Z", "body": "Checklist added to the engineering wiki page 'Release runbook'."}
+     ]},
+    {"project": "engineering", "title": "Flaky test: merge request widget spec fails intermittently",
+     "author": "aiko.tanaka", "assignees": ["aiko.tanaka"], "labels": ["type::bug", "group::code review", "flaky-test"],
+     "created_at": "2026-06-24T14:30:00Z", "state": "opened", "confidential": false,
+     "description": "The MR widget spec fails roughly 1 in 20 runs on CI with a timing error. Quarantined for now; needs a proper wait instead of a fixed sleep.",
+     "comments": []},
+    {"project": "engineering", "title": "Release checklist: October monthly release",
+     "author": "arjun.mehta", "assignees": ["arjun.mehta"], "labels": ["release", "group::delivery"],
+     "created_at": "2026-07-01T13:10:00Z", "state": "opened", "confidential": false,
+     "description": "Release manager: Arjun Mehta. Backup: Daniel Kim.\n\n- [x] Create the release branch\n- [x] Tag release candidates\n- [ ] Final release on the third Thursday\n- [ ] Post release notes in #engineering",
+     "comments": [
+       {"author": "daniel.kim", "date": "2026-07-02T09:00:00Z", "body": "I'll shadow this one so I can run the next release."}
+     ]},
+    {"project": "engineering", "title": "Add index on merge request diffs to speed up the MR page",
+     "author": "meera.iyer", "assignees": ["meera.iyer", "sofia.rossi"], "labels": ["type::feature", "group::data stores", "database"],
+     "created_at": "2026-08-05T15:20:00Z", "state": "closed", "confidential": false,
+     "description": "The MR page query on merge request diffs takes ~900 ms at p95. A partial index on the active diffs should bring it under 200 ms. Migration runs in the Thursday maintenance window.",
+     "comments": [
+       {"author": "sofia.rossi", "date": "2026-08-07T19:40:00Z", "body": "Migration done. p95 is now ~120 ms. Closing."}
+     ]},
+    {"project": "engineering", "title": "New diff file tree in code review (feature flag rollout)",
+     "author": "tomas.rivera", "assignees": ["tomas.rivera"], "labels": ["type::feature", "group::code review", "feature flag"],
+     "created_at": "2026-09-16T10:00:00Z", "state": "opened", "confidential": false,
+     "description": "The new file tree in the diff view is behind the `diff_file_tree_v2` feature flag. Rollout plan: internal users this week, 10% next week, then 100% if no regressions.",
+     "comments": [
+       {"author": "oluwaseun.adeyemi", "date": "2026-09-17T08:30:00Z", "body": "Looks great. Please add the rollout steps to the issue before going to 10%."}
+     ]},
+    {"project": "security", "title": "CI job token exposed in a public fork's job log",
+     "author": "nadia.haddad", "assignees": ["nadia.haddad", "victor.petrov"], "labels": ["security", "incident", "severity::2"],
+     "created_at": "2026-07-22T07:52:00Z", "state": "closed", "confidential": true,
+     "description": "A CI job token appeared in plain text in a public fork's job log. Token revoked at 07:50 UTC.\n\nTimeline, impact and follow-ups below.",
+     "comments": [
+       {"author": "victor.petrov", "date": "2026-07-22T09:35:00Z", "body": "Audit logs show no use of the token before revocation. Root cause: a debug flag printed CI variables. Fix in review."},
+       {"author": "nadia.haddad", "date": "2026-07-25T12:00:00Z", "body": "Fix merged and the debug flag removed. Closing the incident."}
+     ]},
+    {"project": "security", "title": "Phishing campaign using fake Workday emails",
+     "author": "nadia.haddad", "assignees": ["nadia.haddad"], "labels": ["security", "phishing"],
+     "created_at": "2026-09-08T12:05:00Z", "state": "opened", "confidential": true,
+     "description": "Several team members received emails imitating Workday asking them to 'confirm their PTO balance'. Sender domains blocked. Collecting reports via /security.",
+     "comments": []},
+    {"project": "sales", "title": "Acme Logistics: self-managed POC with SSO",
+     "author": "ravi.kumar", "assignees": ["ravi.kumar", "emily.watson"], "labels": ["poc", "enterprise", "emea"],
+     "created_at": "2026-06-18T10:10:00Z", "state": "closed", "confidential": false,
+     "description": "Requirements: self-managed install, SAML SSO with their identity provider, audit events export. Demo planned for June 26.",
+     "comments": [
+       {"author": "emily.watson", "date": "2026-07-03T15:00:00Z", "body": "POC passed. Acme signed a 3-year agreement. Closing."}
+     ]}
+  ]
+}

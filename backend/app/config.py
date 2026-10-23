@@ -13,6 +13,12 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://api.openai.com/v1")
 LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4o-mini")  # GPT-4o mini
 
+JWT_SECRET = os.getenv("JWT_SECRET", "")
+JWT_EXPIRE_HOURS = int(os.getenv("JWT_EXPIRE_HOURS", "24"))
+
+# Roles a user can hold for content; 'all' content is readable by everyone.
+CONTENT_ROLES = ("engineer", "hr", "manager", "security", "sales")
+
 DATA_DIR = PROJECT_ROOT / "data"
 MIGRATIONS_DIR = PROJECT_ROOT / "db" / "migrations"
 

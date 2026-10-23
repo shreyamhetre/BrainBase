@@ -9,10 +9,12 @@ Then open http://localhost:8000/docs to try it in the browser.
 import time
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from langfuse import get_client
 from pydantic import BaseModel, Field
 
+from app.api import admin_routes, auth_routes
+from app.auth import User, current_user
 from app.embedding import get_model
 from app.graph import ask
 from app.retrieval.rank import get_reranker
@@ -32,15 +34,17 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+app.include_router(auth_routes.router)
+app.include_router(admin_routes.router)
 
 
 class AskRequest(BaseModel):
-    question: str = Field(min_length=3, examples=["How many weeks of parental leave do I get?"])
-    role: str = Field(default="all", description="Role to ask as; permissions arrive in step 6")
+    question: str = Field(min_length=3, max_length=2000, examples=["How many weeks of parental leave do I get?"])
 
 
 class Source(BaseModel):
     number: int
+    source: str
     title: str
     heading_path: str
     link: str
@@ -63,16 +67,18 @@ def health() -> dict:
 
 
 @app.post("/ask", response_model=AskResponse)
-def ask_question(request: AskRequest) -> AskResponse:
+def ask_question(request: AskRequest, user: User = Depends(current_user)) -> AskResponse:
     # A plain def (not async): FastAPI runs it in a worker thread, so the
     # GPU and database work doesn't block the server.
+    # Roles come from the database for the logged-in user, never from the request.
     start = time.perf_counter()
-    answer = ask(request.question, [request.role])
+    answer = ask(request.question, user.roles)
     return AskResponse(
         answer=answer.text,
         sources=[
             Source(
                 number=n,
+                source=c.source,
                 title=c.title,
                 heading_path=c.heading_path,
                 link=c.link,

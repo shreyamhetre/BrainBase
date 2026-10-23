@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+/* GitMore brand: navy and orange from the logo */
+:root {
+  --background: #f7f7fb;
+  --surface: #ffffff;
+  --foreground: #1b2140;
+  --muted: #5d647e;
+  --border: #e3e5ee;
+  --brand: #fc6d26;
+  --brand-strong: #e24329;
+  --navy: #1e2a4a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0f1220;
+    --surface: #171b2e;
+    --foreground: #e8eaf4;
+    --muted: #9aa1bb;
+    --border: #2a3049;
+    --navy: #c9d1ef;
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-brand: var(--brand);
+  --color-brand-strong: var(--brand-strong);
+  --color-navy: var(--navy);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}

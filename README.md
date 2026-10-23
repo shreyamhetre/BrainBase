@@ -232,16 +232,36 @@ python -m app.db.migrate
 
 All commands run from the project root.
 
-### 5. Ask questions
+### 5. Create the users
+
+Add to `.env`:
+
+```env
+JWT_SECRET=...                 # long random string
+JWT_EXPIRE_HOURS=24
+ADMIN_EMAIL=you@example.com    # your admin login
+ADMIN_PASSWORD=...
+DEMO_USER_PASSWORD=...         # shared password for the 20 demo people
+```
 
 ```bash
-python -m app.ask "How many weeks of parental leave do I get?"   # command line
-uvicorn app.api.main:app --reload --reload-dir backend/app         # API, then open http://localhost:8000/docs
+python backend/scripts/seed_users.py
 ```
+
+This creates the admin and the 20 invented people in [data/synthetic/people.json](data/synthetic/people.json) (emails like `priya.sharma@gitmore.example`).
+
+### 6. Run GitMore
+
+```bash
+uvicorn app.api.main:app --reload --reload-dir backend/app   # backend on :8000 (API docs at /docs)
+cd frontend && npm install && npm run dev                      # web app on http://localhost:3000
+```
+
+Log in as the admin to manage roles at `/admin`, or as a demo person to see answers for their role. From the command line: `python -m app.ask "How many weeks of parental leave do I get?"`.
 
 Test questions with expected sources: [eval/questions.md](eval/questions.md).
 
-### 6. Langfuse tracing (optional)
+### 7. Langfuse tracing (optional)
 
 ```bash
 docker compose -f docker-compose.langfuse.yml up -d
@@ -274,9 +294,9 @@ It runs 6 containers (web, worker, Postgres, ClickHouse, Redis, MinIO) separatel
 | 2 | 📥 Ingest the handbook: parse, chunk, embed, store (permission columns included, default everyone) | ✅ |
 | 3 | 🔎 Query path: LangGraph knowledge route, hybrid search, RRF, rerank, cited answers, first 20 eval questions, Langfuse tracing | ✅ |
 | 4 | 📊 Evaluation: 10 key questions, baseline scores (hit@5 9/9, MRR 0.81), known limitations recorded | ✅ |
-| 5 | 📗 Add product docs and issues | |
-| 6 | 💬 Synthetic Slack, Google Docs and confidential GitLab issues through connector sync + role-based permissions enforced | |
-| 7 | 🖥️ Next.js chat and admin console | |
+| 5 | 📗 Add product docs and issues | skipped |
+| 6 | 💬 Synthetic Slack, GitLab wiki and confidential GitLab issues through connector sync + login and role-based access (RBAC) | ⏳ |
+| 7 | 🖥️ Next.js chat and admin console | ⏳ |
 | 8 | ⚡ Action route (MCP writes with confirmation), clarify route and stretch goals | |
 
 Detailed progress: [docs/steps.md](docs/steps.md)
