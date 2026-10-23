@@ -1,8 +1,11 @@
 # Secrets
 .env
 
-# Local notes, not shared
+# Local notes and generated helper files, not shared
 docs/open-decisions.md
+docs/steps.md
+frontend/AGENTS.md
+frontend/README.md
 .env.example
 
 # Python

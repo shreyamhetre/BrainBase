@@ -300,8 +300,6 @@ It runs 6 containers (web, worker, Postgres, ClickHouse, Redis, MinIO) separatel
 | 7 | 🖥️ Next.js chat and admin console | ⏳ |
 | 8 | ⚡ Action route (MCP writes with confirmation), clarify route and stretch goals | |
 
-Detailed progress: [docs/steps.md](docs/steps.md)
-
 ## 📊 Evaluation
 
 Quality is measured, not guessed. `python backend/scripts/evaluate.py` runs the questions in [eval/questions.md](eval/questions.md) and records each run. It starts with the 10 most important handbook questions and grows as sources arrive: cross-source, expertise, conflicting sources, routing and permissions.
@@ -342,7 +340,7 @@ Company_Brain/
 │   ├── raw/               cloned sources (git-ignored)
 │   └── synthetic/         generated Slack / Google Docs / issue data
 ├── eval/                  evaluation questions and results
-├── docs/                  plan, progress, assets
+├── docs/                  project plan and assets
 ├── .env                   your settings, shared by Docker Compose and the backend (git-ignored)
 └── docker-compose.yml
 ```
