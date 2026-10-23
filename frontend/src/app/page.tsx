@@ -114,7 +114,7 @@ export default function ChatPage() {
 
   return (
     <>
-      <Header user={user} active="chat" />
+      <Header user={user} />
       <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col px-4">
         <div className="flex-1 space-y-8 py-8">
           {turns.length === 0 && (

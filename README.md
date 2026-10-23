@@ -38,6 +38,9 @@ It is built around GitLab, a remote company of about 2,000 people, using its **r
 
 | Feature | Description |
 |---|---|
+| Connectors (planned) | GitLab and Slack connectors sync content and its permissions into one index |
+| Router (planned) | One question box; the router chooses search, an action or a clarifying question |
+| Actions through MCP (planned) | Create a GitLab issue or post to Slack, after the user confirms |
 | Hybrid search | Vector search for meaning and keyword search for exact terms, merged with reciprocal rank fusion |
 | Reranking | A cross-encoder reads the top candidates closely and keeps the best five |
 | Cited answers | Every claim links to the passage it came from |
@@ -49,44 +52,67 @@ It is built around GitLab, a remote company of about 2,000 people, using its **r
 
 ## Architecture
 
-GitMore has two halves. **Ingestion** prepares content ahead of time; the **query path** runs for every question. Postgres is the shared index between them.
+GitMore has two halves. **Ingestion** keeps an index of every source up to date through connectors; the **query path** runs for every message and decides whether to answer from that index (RAG), take an action in a tool (MCP), or ask a clarifying question. Postgres is the shared index between them.
+
+Solid boxes are built. Dashed boxes are designed and planned; see the [roadmap](#roadmap).
+
+### 1. Ingestion: connectors sync every source into one index
 
 ```mermaid
 flowchart LR
     subgraph Sources
         direction TB
-        H[GitLab handbook]
-        W[Wiki pages]
+        H[GitLab handbook<br/>real]
         I[GitLab issues<br/>incl. confidential]
-        S[Slack threads]
+        W[GitLab wiki]
+        S[Slack channels]
     end
 
-    subgraph Ingestion
+    subgraph Connectors[Connectors, run on a schedule]
         direction TB
-        P[Parse and clean] --> C[Chunk by heading]
-        C --> M[Attach metadata<br/>and allowed roles]
-        M --> E[Embed<br/>BGE-M3]
+        CH[Handbook loader<br/>git clone + selection rules]
+        CG[GitLab connector<br/>issues + wiki API]
+        CS[Slack connector<br/>conversations API]
     end
 
-    Sources --> P
+    H --> CH
+    I --> CG
+    W --> CG
+    S --> CS
+
+    CH --> SY
+    CG --> SY
+    CS --> SY
+
+    SY[Incremental sync<br/>new, changed, deleted] --> P[Parse and clean]
+    P --> C[Chunk by heading<br/>or thread]
+    C --> M[Metadata + allowed roles<br/>from project, channel, confidentiality]
+    M --> E[Embed<br/>BGE-M3]
     E --> DB[(Postgres<br/>pgvector + full-text)]
 
     classDef store fill:#1e2a4a,stroke:#1e2a4a,color:#ffffff
-    classDef step fill:#fff4ec,stroke:#fc6d26,color:#1b2140
+    classDef built fill:#fff4ec,stroke:#fc6d26,color:#1b2140
+    classDef planned fill:#ffffff,stroke:#5d647e,color:#1b2140,stroke-dasharray:5 4
     class DB store
-    class P,C,M,E step
+    class CH,P,C,M,E built
+    class CG,CS,SY planned
 ```
 
-- **Metadata** is copied onto every chunk: source, URL, heading path, date, author, design-document status and the roles allowed to read it.
-- **Selection rules** keep the handbook focused: recently changed pages, core policy sections and implemented design documents. About 25,000 chunks in total.
+- **Connectors carry permissions.** Each source maps to roles: a Slack channel such as `#hr-private` maps to `hr`, a confidential issue in the security project maps to `security`, the handbook maps to everyone. Those roles are copied onto every chunk.
+- **Incremental sync** fetches only new or changed content and removes deleted items, so stale answers don't pile up.
+- **Metadata** on every chunk: source, URL, heading path or thread, author, date, design-document status and allowed roles.
+- The synthetic Slack messages, issues and wiki pages are already published to a real Slack workspace and a private GitLab group by `backend/scripts/publish_synthetic.py`, so the connectors read them through the real APIs.
 
-### Query path
+### 2. Query path: one question box, a router decides
 
 ```mermaid
 flowchart TD
-    U([Question + user's roles]) --> API[FastAPI<br/>JWT cookie checked]
-    API --> G[LangGraph<br/>retrieve, then answer]
-    G --> EQ[Embed question<br/>BGE-M3]
+    U([Message + user's roles]) --> API[FastAPI<br/>JWT cookie checked]
+    API --> RT{LangGraph router<br/>what does this need?}
+
+    RT -- knowledge --> EQ[Embed question<br/>BGE-M3]
+    RT -- action --> AC[Action card<br/>user confirms]
+    RT -- unclear --> CL[Clarifying question]
 
     subgraph PG[Postgres: one query, role filter in the WHERE clause]
         direction LR
@@ -95,30 +121,32 @@ flowchart TD
     end
 
     EQ --> V
-    G --> K
+    RT -- knowledge --> K
     V --> F[Reciprocal rank fusion]
     K --> F
     F --> RR[Rerank<br/>top 30 to top 5]
     RR --> L[GPT-4o mini<br/>answer with citations]
+    RR -. context, if the action needs it .-> AC
+    AC --> MCP[MCP write<br/>GitLab issue, Slack post]
+    MCP --> L
     L --> A([Answer + sources])
+    CL --> A
 
     classDef io fill:#1e2a4a,stroke:#1e2a4a,color:#ffffff
-    classDef step fill:#fff4ec,stroke:#fc6d26,color:#1b2140
+    classDef built fill:#fff4ec,stroke:#fc6d26,color:#1b2140
+    classDef planned fill:#ffffff,stroke:#5d647e,color:#1b2140,stroke-dasharray:5 4
     class U,A io
-    class API,G,EQ,V,K,F,RR,L step
+    class API,EQ,V,K,F,RR,L built
+    class RT,AC,CL,MCP planned
     style PG fill:#f7f7fb,stroke:#5d647e,color:#1b2140
 ```
 
-- **The same embedding model** encodes chunks and questions, otherwise vector search would not match.
-- **Fusion** combines the vector and keyword result lists by rank; the **reranker** then reads the pool closely and keeps the best five.
-- **The permission filter runs inside the search query**, so restricted chunks are never retrieved, never ranked and never sent to the model.
-
-### Planned extensions
-
-- Query rewriting and follow-up questions that use the conversation history.
-- A router that sends each message to search, an action, or a clarifying question.
-- Actions through MCP (create an issue, post to Slack), always confirmed by the user first.
-- Conflict detection when sources disagree, preferring the newer one and warning the user.
+- **The router picks the route**, so users never choose a tool or type a command. A single message can need both routes: "Summarize the PTO policy and post it to #hr" searches first, then acts.
+- **Knowledge goes through RAG; actions go through MCP.** Today every message takes the knowledge route.
+- **MCP is used for writes only.** All reads come from the indexed, permission-tagged data, because an admin-connected MCP server could see more than the asking user is allowed to.
+- **Every action needs the user's confirmation** before anything is written to Slack or GitLab.
+- **The permission filter runs inside the search query**, so restricted chunks are never retrieved, ranked or sent to the model.
+- **The same embedding model** encodes chunks and questions; **fusion** merges the vector and keyword lists by rank, and the **reranker** keeps the best five.
 
 ## Access control
 
@@ -157,6 +185,9 @@ flowchart LR
 | Orchestration | LangGraph | Steps as a graph with state and branching |
 | Auth | JWT, bcrypt | Stateless sessions in an httpOnly cookie |
 | Frontend | Next.js 16, TypeScript, Tailwind CSS | Chat and admin console, responsive on all screen sizes |
+| Connectors | GitLab API, Slack API | Incremental sync of issues, wiki pages and channels, with their permissions |
+| Actions | MCP servers (GitLab, Slack) | Standard way to give the agent tools; used for writes only |
+| Background sync | APScheduler | Re-syncs sources on a schedule |
 | Tracing | Langfuse (self-hosted) | Chunks, prompt, tokens, cost and latency per question |
 | Packaging | Docker Compose | One command for the database |
 
