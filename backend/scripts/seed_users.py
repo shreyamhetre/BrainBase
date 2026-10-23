@@ -11,7 +11,7 @@ import json
 import os
 
 from app.auth import hash_password
-from app.config import DATA_DIR
+from app.config import CONTENT_ROLES, DATA_DIR
 from app.db.connection import connect
 
 PEOPLE_FILE = DATA_DIR / "synthetic" / "people.json"
@@ -32,7 +32,7 @@ def main() -> None:
     demo_password = os.environ["DEMO_USER_PASSWORD"]
     people = json.loads(PEOPLE_FILE.read_text(encoding="utf-8"))["people"]
 
-    admin = {"email": admin_email.lower(), "name": "GitMore Admin", "roles": [], "is_admin": True,
+    admin = {"email": admin_email.lower(), "name": "GitMore Admin", "roles": list(CONTENT_ROLES), "is_admin": True,
              "team": "Admin", "title": "Administrator", "handle": None,
              "password_hash": hash_password(admin_password)}
     demo_hash = hash_password(demo_password)  # bcrypt is slow on purpose; hash once for all 20

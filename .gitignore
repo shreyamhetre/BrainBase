@@ -1,5 +1,8 @@
 # Secrets
 .env
+
+# Local notes, not shared
+docs/open-decisions.md
 .env.example
 
 # Python

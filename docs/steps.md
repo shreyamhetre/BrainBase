@@ -71,10 +71,11 @@ Skipped by decision: the handbook covers policy and process; tickets come from s
 - ✅ Login API: signup (no roles by default), login (JWT, 24 h, httpOnly cookie), logout, /auth/me; roles read from DB on every request
 - ✅ Admin API: list users, assign roles, make admin, deactivate (admins only)
 - ✅ /ask requires login; permission filter uses the user's roles
-- ✅ Seeded admin (gitmore@gmail.com) + 20 demo people from data/synthetic/people.json (backend/scripts/seed_users.py)
+- ✅ Seeded admin (shreya.mhetre@gitmore.com, every role) + 20 demo people from data/synthetic/people.json (backend/scripts/seed_users.py)
+- ✅ Company emails only: sign-up and login accept @gitmore.com (ALLOWED_EMAIL_DOMAIN), checked in the backend; all 21 users renamed in place
 - ✅ Synthetic content as files for review (data/synthetic/): 28 Slack messages, 9 GitLab issues (2 confidential), 7 wiki pages; traps: outdated PTO answer, HR-only salary bands, managers-only restructuring plan, security-only incident
-- ⬜ Shreya reviews the files and the open decisions (docs/open-decisions.md)
-- ⬜ Publish reviewed content to Slack and GitLab
+- ✅ Decisions: content approved; admin holds every role; guests and new sign-ups get handbook only; demo logins kept; Tailwind and the built-in answer renderer kept
+- ✅ Published (backend/scripts/publish_synthetic.py): 28 Slack messages with author/date metadata, 9 GitLab issues (backdated, 2 confidential), 7 wiki pages; issue numbers match the Slack references
 - ⬜ Connectors: GitLab issues + wiki, Slack messages → chunks with allowed_roles
 - ⬜ Permission, conflict and expertise questions in the evaluation (zero leaks)
 

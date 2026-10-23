@@ -12,7 +12,7 @@ import bcrypt
 import jwt
 from fastapi import Depends, HTTPException, Request, status
 
-from app.config import JWT_EXPIRE_HOURS, JWT_SECRET
+from app.config import CONTENT_ROLES, JWT_EXPIRE_HOURS, JWT_SECRET
 from app.db.connection import connect
 
 ALGORITHM = "HS256"
@@ -54,7 +54,12 @@ def get_user(user_id: str) -> User | None:
         row = conn.execute(
             f"SELECT {USER_COLUMNS} FROM users WHERE id = %s AND is_active", (user_id,)
         ).fetchone()
-    return User(*row) if row else None
+    if not row:
+        return None
+    user = User(*row)
+    if user.is_admin:
+        user.roles = list(CONTENT_ROLES)  # admins can read everything, including roles added later
+    return user
 
 
 def _token_from(request: Request) -> str | None:

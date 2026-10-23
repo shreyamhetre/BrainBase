@@ -10,10 +10,18 @@ from pydantic import BaseModel, EmailStr, Field
 
 from app.auth import (COOKIE_NAME, USER_COLUMNS, User, create_token, current_user,
                       hash_password, verify_password)
-from app.config import JWT_EXPIRE_HOURS
+from app.config import ALLOWED_EMAIL_DOMAIN, JWT_EXPIRE_HOURS
 from app.db.connection import connect
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+def require_company_email(email: str) -> str:
+    """Only company addresses (e.g. name@gitmore.com) can sign up or log in."""
+    email = email.lower()
+    if email.rsplit("@", 1)[-1] != ALLOWED_EMAIL_DOMAIN:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Use your @{ALLOWED_EMAIL_DOMAIN} email")
+    return email
 
 
 class SignupRequest(BaseModel):
@@ -53,12 +61,13 @@ def _issue(response: Response, user: User) -> TokenOut:
 
 @router.post("/signup", response_model=TokenOut, status_code=status.HTTP_201_CREATED)
 def signup(body: SignupRequest, response: Response) -> TokenOut:
+    email = require_company_email(body.email)
     try:
         with connect() as conn:
             row = conn.execute(
                 f"INSERT INTO users (email, name, password_hash) VALUES (%s, %s, %s) "
                 f"RETURNING {USER_COLUMNS}",
-                (body.email.lower(), body.name.strip(), hash_password(body.password)),
+                (email, body.name.strip(), hash_password(body.password)),
             ).fetchone()
     except UniqueViolation:
         raise HTTPException(status.HTTP_409_CONFLICT, "An account with this email already exists") from None
@@ -67,10 +76,11 @@ def signup(body: SignupRequest, response: Response) -> TokenOut:
 
 @router.post("/login", response_model=TokenOut)
 def login(body: LoginRequest, response: Response) -> TokenOut:
+    email = require_company_email(body.email)
     with connect() as conn:
         row = conn.execute(
             f"SELECT {USER_COLUMNS}, password_hash FROM users WHERE lower(email) = %s AND is_active",
-            (body.email.lower(),),
+            (email,),
         ).fetchone()
         # Same message for unknown email and wrong password, so emails can't be probed
         if not row or not verify_password(body.password, row[-1]):

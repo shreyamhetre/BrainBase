@@ -239,7 +239,8 @@ Add to `.env`:
 ```env
 JWT_SECRET=...                 # long random string
 JWT_EXPIRE_HOURS=24
-ADMIN_EMAIL=you@example.com    # your admin login
+ALLOWED_EMAIL_DOMAIN=gitmore.com   # only company emails can sign up or log in
+ADMIN_EMAIL=you@gitmore.com    # your admin login
 ADMIN_PASSWORD=...
 DEMO_USER_PASSWORD=...         # shared password for the 20 demo people
 ```
@@ -248,7 +249,7 @@ DEMO_USER_PASSWORD=...         # shared password for the 20 demo people
 python backend/scripts/seed_users.py
 ```
 
-This creates the admin and the 20 invented people in [data/synthetic/people.json](data/synthetic/people.json) (emails like `priya.sharma@gitmore.example`).
+This creates the admin and the 20 invented people in [data/synthetic/people.json](data/synthetic/people.json) (emails like `priya.sharma@gitmore.com`). Sign-up and login only accept emails at `ALLOWED_EMAIL_DOMAIN`, checked in the backend.
 
 ### 6. Run GitMore
 
