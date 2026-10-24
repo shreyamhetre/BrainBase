@@ -199,3 +199,65 @@ def activity(limit: int = Query(100, ge=1, le=500), _: User = Depends(admin_user
             (limit,),
         ).fetchall()
     return [ActivityOut(**dict(zip(ActivityOut.model_fields, row))) for row in rows]
+
+
+class UsageTotals(BaseModel):
+    questions: int
+    tokens: int
+    cost_usd: float
+    avg_seconds: float
+    not_found: int
+
+
+class UsageRow(BaseModel):
+    id: int
+    user: str | None
+    question: str
+    found: bool
+    sources: int
+    tokens: int
+    cost_usd: float
+    seconds: float
+    trace_url: str | None
+    created_at: datetime
+
+
+class Usage(BaseModel):
+    today: UsageTotals
+    last_7_days: UsageTotals
+    all_time: UsageTotals
+    top_users: list[dict]
+    recent: list[UsageRow]
+
+
+TOTALS_SQL = """
+SELECT count(*), coalesce(sum(prompt_tokens + completion_tokens), 0), coalesce(sum(cost_usd), 0),
+       coalesce(avg(seconds), 0), count(*) FILTER (WHERE NOT found)
+FROM query_log WHERE created_at >= %s
+"""
+
+
+@router.get("/usage", response_model=Usage)
+def usage(_: User = Depends(admin_user)) -> Usage:
+    """Questions, tokens, cost and speed from GitMore's own log (kept even when Langfuse is off)."""
+    with connect() as conn:
+        def totals(since: str) -> UsageTotals:
+            q, t, c, s, nf = conn.execute(TOTALS_SQL.replace("%s", since)).fetchone()
+            return UsageTotals(questions=q, tokens=t, cost_usd=float(c), avg_seconds=round(float(s), 2), not_found=nf)
+
+        top = conn.execute(
+            "SELECT coalesce(u.name, 'deleted user'), count(*), sum(q.prompt_tokens + q.completion_tokens), sum(q.cost_usd) "
+            "FROM query_log q LEFT JOIN users u ON u.id = q.user_id GROUP BY 1 ORDER BY 2 DESC LIMIT 5"
+        ).fetchall()
+        recent = conn.execute(
+            "SELECT q.id, u.name, q.question, q.found, jsonb_array_length(q.sources), q.prompt_tokens + q.completion_tokens, "
+            "q.cost_usd, q.seconds, q.trace_url, q.created_at FROM query_log q LEFT JOIN users u ON u.id = q.user_id "
+            "ORDER BY q.created_at DESC LIMIT 50"
+        ).fetchall()
+        return Usage(
+            today=totals("date_trunc('day', now())"),
+            last_7_days=totals("now() - interval '7 days'"),
+            all_time=totals("'-infinity'::timestamptz"),
+            top_users=[{"name": n, "questions": q, "tokens": t, "cost_usd": float(c)} for n, q, t, c in top],
+            recent=[UsageRow(**dict(zip(UsageRow.model_fields, row))) for row in recent],
+        )

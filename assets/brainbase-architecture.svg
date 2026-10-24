@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1100" height="600" viewBox="0 0 1100 600" role="img" aria-labelledby="t d">
   <title id="t">Brainbase architecture</title>
-  <desc id="d">Admins configure connectors, access mapping, models and MCP tools in the app. Ingestion syncs sources on a schedule, on demand or from events, chunks them, attaches allowed roles, embeds with BGE-M3 and stores them in PostgreSQL with pgvector. The LangGraph query path runs hybrid search with the role filter inside the SQL query, fuses and reranks results, and writes a cited answer. A router also sends requests to live lookups, confirmed MCP actions or a clarifying question. Tracing, evaluation and an activity log observe every step.</desc>
+  <desc id="d">Admins configure connectors, access mapping, models and MCP tools in the app. Ingestion syncs sources on a schedule or on demand, chunks them, attaches allowed roles, embeds with BGE-M3 and stores them in PostgreSQL with pgvector. The LangGraph query path runs hybrid search with the role filter inside the SQL query, fuses and reranks results, and writes a cited answer. A router also sends requests to live lookups, confirmed MCP actions or a clarifying question. Tracing, evaluation and an activity log observe every step.</desc>
   <defs>
     <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
       <path d="M0,0 L10,5 L0,10 Z" fill="#fc6d26"/>
@@ -47,7 +47,7 @@
       <text x="976" y="192">PostgreSQL</text>
     </g>
     <g font-size="12" fill="#98a8bf" text-anchor="middle">
-      <text x="126" y="211">Schedule · Sync now · events</text>
+      <text x="126" y="211">On a schedule · Sync now</text>
       <text x="339" y="211">Headings · threads · issues</text>
       <text x="552" y="211">From the access mapping</text>
       <text x="765" y="211">BGE-M3, on the GPU</text>

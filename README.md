@@ -175,13 +175,10 @@ Permission correctness is a critical system requirement and should be validated 
 
 ### Synchronization and freshness
 
-- Manual and scheduled synchronization.
-- Per-connector locking and change-aware upserts.
+- Scheduled synchronization, with the interval set per connector, plus an on-demand **Sync now**.
+- Per-connector locking and change-aware upserts: unchanged content is never re-embedded.
 - Deletion handling to remove content that disappears from a source.
-- Slack event-handling and GitLab webhook infrastructure for faster updates.
-- A scheduled sync as a safety net for missed events.
-
-Near-real-time behavior depends on completing the relevant external app configuration and making webhook endpoints reachable.
+- Access changes apply to indexed content immediately, without waiting for the next sync.
 
 ### Security and observability
 

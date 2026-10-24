@@ -61,8 +61,7 @@ GitMore is a configurable system with GitLab as the example company: connectors,
 ```
 INGESTION (background, not part of LangGraph)
   connectors (added in the app, tokens encrypted in the database)
-    Slack events (Socket Mode) + GitLab webhooks → re-index one changed item within seconds
-    scheduled sync per connector (safety net: missed events, deletions) + Sync now
+    scheduled sync per connector (interval set in the app) + Sync now
   → parse → chunk (heading, or one Slack thread) → attach metadata + allowed roles
   → embed (BGE-M3) → Postgres (pgvector + full-text + metadata + permissions)
 
@@ -86,7 +85,7 @@ QUERY (LangGraph, runs for every message)
 
 **Ingestion**
 
-- **Near real time:** Slack events and GitLab webhooks re-index a changed thread or issue within seconds; a scheduled sync per connector catches missed events and removes deleted items, so stale answers don't pile up.
+- **Scheduled sync (option A, decided 2026-10-24):** each connector re-syncs on its own interval, and admins can run Sync now. Only changed content is re-embedded, and deleted items are removed, so stale answers don't pile up. Real-time events (Slack Socket Mode, GitLab webhooks) were built and then dropped: they need extra Slack app setup and a public URL, for little gain here.
 - **Deny by default:** a newly found channel or project is visible to admins only until the admin maps it to roles.
 - **Slack unit:** one document per thread (parent plus replies), so a reply keeps its question.
 - **Metadata and permissions at chunk time:** each chunk carries its source, URL, date and who can see it, copied from the original doc. The permission filter checks these fields later.
@@ -121,7 +120,7 @@ Everything below is free or has a free tier, and runs on a laptop plus one LLM A
 | Reranker | BGE Reranker v2-m3 | Free, fast, proven baseline |
 | LLM | GPT-4o mini (OpenAI API) | Cheap, fast, good at grounded answers |
 | Orchestration | LangGraph | Steps as a graph with shared state, branching and retries; built for agents |
-| Connectors | GitLab API + webhooks, Slack API + Events (Socket Mode), configured in the app | Sync content and its permissions within seconds of a change |
+| Connectors | GitLab API, Slack API, configured in the app | Scheduled sync of content and its permissions |
 | Actions | Official GitLab and Slack MCP servers, connected once by the admin | Standard way to give agents tools; role-checked and confirmed |
 | Background sync | A small scheduler thread in the API (no extra package) | Scheduled safety-net sync per connector |
 | Secrets | Tool tokens encrypted in Postgres (Fernet), key in `.env`; login JWT in an httpOnly cookie | A database copy alone can't use the tokens; scripts can't read the login |
@@ -185,7 +184,7 @@ Steps run in this order, with no fixed dates. One gate: core RAG must pass the e
 | 6 | Login and role-based access; synthetic Slack, wiki and confidential GitLab issues published | Roles enforced in search; content in real tools |
 | 7 | Next.js app: sidebar layout, chat, profile, settings, admin console with access requests and activity log | Full demo runs in the browser |
 | 8 | Settings foundation: roles, connectors, access mapping and MCP tables; encrypted tokens | Admin can add a connector and map access |
-| 9 | Connectors: GitLab and Slack sync, Slack events and GitLab webhooks, Connectors page | A change in Slack or GitLab is searchable within seconds |
+| 9 | Connectors: GitLab and Slack sync on a schedule and on demand, Connectors page | Slack and GitLab content searchable, with permissions |
 | 10 | Permission evaluation: questions asked as specific users | Zero leaks |
 | 11 | Conversations: history, sidebar list, follow-ups | Follow-up questions answer correctly |
 | 12 | Router: knowledge, live lookup, action and clarify routes | Routing accuracy measured |

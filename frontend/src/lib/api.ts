@@ -82,13 +82,7 @@ export type Connector = {
     chunks: number;
     error: string | null;
   } | null; // admins only
-  events_status: "off" | "starting" | "listening" | "error";
-  last_event_at: string | null;
-  events_error: string | null; // admins only
-  webhook_url: string | null; // admins only, GitLab
 };
-
-export type EventsResult = { connector: Connector; secret: string | null; registered: string[]; problems: string[] };
 
 export type NewConnector = { kind: "slack" | "gitlab"; name: string; token: string; url?: string; group?: string };
 
@@ -108,6 +102,27 @@ export type McpServer = {
   enabled: boolean;
   status: string;
   tools: { id: string; name: string; description: string; enabled: boolean; allowed_roles: string[]; you_can_use: boolean }[];
+};
+
+export type UsageTotals = { questions: number; tokens: number; cost_usd: number; avg_seconds: number; not_found: number };
+
+export type Usage = {
+  today: UsageTotals;
+  last_7_days: UsageTotals;
+  all_time: UsageTotals;
+  top_users: { name: string; questions: number; tokens: number; cost_usd: number }[];
+  recent: {
+    id: number;
+    user: string | null;
+    question: string;
+    found: boolean;
+    sources: number;
+    tokens: number;
+    cost_usd: number;
+    seconds: number;
+    trace_url: string | null;
+    created_at: string;
+  }[];
 };
 
 export type Source = {
@@ -186,9 +201,6 @@ export const api = {
     request<Connector>(`/admin/connectors/${id}`, json("PATCH", changes)),
   removeConnector: (id: string) => request<void>(`/admin/connectors/${id}`, { method: "DELETE" }),
   checkConnector: (id: string) => request<Connector>(`/admin/connectors/${id}/check`, { method: "POST" }),
-  enableEvents: (id: string, body: { app_token?: string; register_webhooks?: boolean }) =>
-    request<EventsResult>(`/admin/connectors/${id}/events`, json("PUT", body)),
-  disableEvents: (id: string) => request<Connector>(`/admin/connectors/${id}/events`, { method: "DELETE" }),
   syncConnector: (id: string) => request<{ started: boolean }>(`/admin/connectors/${id}/sync`, { method: "POST" }),
   access: (connectorId: string) => request<SourceAccess[]>(`/admin/connectors/${connectorId}/access`),
   editAccess: (id: string, allowed_roles: string[]) => request<SourceAccess>(`/admin/access/${id}`, json("PATCH", { allowed_roles })),
@@ -198,5 +210,6 @@ export const api = {
   requests: (status: "pending" | "decided") => request<AccessRequest[]>(`/admin/requests?status=${status}`),
   decide: (id: string, approve: boolean, note: string | null) =>
     request<AccessRequest>(`/admin/requests/${id}/decision`, json("POST", { approve, note })),
+  usage: () => request<Usage>("/admin/usage"),
   activity: (limit = 100) => request<Activity[]>(`/admin/activity?limit=${limit}`),
 };

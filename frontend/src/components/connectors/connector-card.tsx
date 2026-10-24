@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { ErrorNote, Pill, RolesDropdown, Switch, rolesText } from "@/components/admin/parts";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { EventsPanel } from "@/components/connectors/events-panel";
 import { Icon } from "@/components/icons";
 import { api, type Connector, type SourceAccess } from "@/lib/api";
 import { fullDate, timeAgo } from "@/lib/format";
@@ -149,7 +148,6 @@ export function ConnectorCard({ connector, isAdmin, roles, onChanged, onRemoved 
             <span title={fullDate(connector.last_sync_at)}>{connector.last_sync_at ? `synced ${timeAgo(connector.last_sync_at)}` : "not synced yet"}</span>
             {" · every "}{every(connector.sync_interval_minutes)}
             {" · "}{connector.documents} {connector.documents === 1 ? "document" : "documents"} indexed
-            {connector.events_status === "listening" && " · updates within seconds"}
           </p>
           <p className="mt-3 text-sm">
             <span className="text-muted">{isAdmin ? "Sources: " : "You can read: "}</span>
@@ -219,7 +217,6 @@ export function ConnectorCard({ connector, isAdmin, roles, onChanged, onRemoved 
               Remove
             </button>
           </div>
-          <EventsPanel connector={connector} onChanged={onChanged} />
           {showAccess && <AccessTable connector={connector} roles={roles} onChanged={refresh} ask={setAsk} />}
         </>
       )}

@@ -12,6 +12,9 @@ DATABASE_URL = os.environ["DATABASE_URL"]
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 LLM_BASE_URL = os.getenv("LLM_BASE_URL", "https://api.openai.com/v1")
 LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4o-mini")  # GPT-4o mini
+# US dollars per million tokens, for the usage log (GPT-4o mini list prices; change with the model)
+LLM_PRICE_INPUT_PER_M = float(os.getenv("LLM_PRICE_INPUT_PER_M", "0.15"))
+LLM_PRICE_OUTPUT_PER_M = float(os.getenv("LLM_PRICE_OUTPUT_PER_M", "0.60"))
 
 JWT_SECRET = os.getenv("JWT_SECRET", "")
 JWT_EXPIRE_HOURS = int(os.getenv("JWT_EXPIRE_HOURS", "24"))
@@ -19,7 +22,6 @@ ALLOWED_EMAIL_DOMAIN = os.getenv("ALLOWED_EMAIL_DOMAIN", "gitmore.com").lower() 
 
 SECRETS_KEY = os.getenv("SECRETS_KEY", "")  # encrypts connector and MCP tokens in the database
 SYNC_SCHEDULER = os.getenv("SYNC_SCHEDULER", "1") != "0"  # background connector sync in the API
-PUBLIC_URL = os.getenv("PUBLIC_URL", "").rstrip("/")  # where GitLab can reach the API, for webhooks
 
 DATA_DIR = PROJECT_ROOT / "data"
 MIGRATIONS_DIR = PROJECT_ROOT / "db" / "migrations"

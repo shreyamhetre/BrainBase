@@ -4,10 +4,6 @@ Everyone logged in can see what is connected and what they can read or use.
 Only admins change anything. Tokens go in encrypted and never come back out.
 """
 
-import json
-import secrets
-import urllib.error
-import urllib.request
 from datetime import datetime
 from uuid import UUID
 
@@ -20,8 +16,6 @@ from pydantic import BaseModel, Field, field_validator
 from app.audit import record
 from app.auth import User, admin_user, current_user
 from app.connectors.clients import ConnectorError, client
-from app.config import PUBLIC_URL
-from app.connectors.events import events, open_socket_url
 from app.connectors.sync import run_sync
 from app.ingestion.store import ADMINS_ONLY
 from app.db.connection import connect
@@ -135,10 +129,6 @@ class ConnectorOut(BaseModel):
     documents: int
     syncing: bool
     last_run: dict | None
-    events_status: str                # off, starting, listening, error
-    last_event_at: datetime | None
-    events_error: str | None = None   # admin only
-    webhook_url: str | None = None    # admin only, GitLab
     # Admin only
     config: dict | None = None
     token_hint: str | None = None
@@ -187,9 +177,7 @@ SELECT c.id::text, c.kind, c.name, c.enabled, c.status, c.last_error, c.last_che
                 FILTER (WHERE s.allowed_roles && %(roles)s), '{}'),
        (SELECT count(*) FROM documents d JOIN source_access a ON a.id = d.access_id WHERE a.connector_id = c.id),
        (SELECT to_jsonb(r) FROM (SELECT status, trigger, started_at, finished_at, seen, changed, deleted, chunks, error
-                                 FROM sync_runs WHERE connector_id = c.id AND trigger <> 'event'
-                                 ORDER BY started_at DESC LIMIT 1) r),
-       c.events_status, c.last_event_at, c.events_error
+                                 FROM sync_runs WHERE connector_id = c.id ORDER BY started_at DESC LIMIT 1) r)
 FROM connectors c
 LEFT JOIN source_access s ON s.connector_id = c.id
 """
@@ -202,18 +190,14 @@ def _connectors(conn: psycopg.Connection, user: User, where: str = "", params: d
     rows = conn.execute(f"{sql} {where} GROUP BY c.id ORDER BY c.created_at", {"roles": roles, **(params or {})}).fetchall()
     out = []
     for (cid, kind, name, enabled, st, err, checked, synced, interval, config, token, total, unmapped, readable,
-         documents, last_run, events_status, last_event_at, events_error) in rows:
+         documents, last_run) in rows:
         item = ConnectorOut(id=cid, kind=kind, name=name, enabled=enabled, status=st, last_error=err if user.is_admin else None,
                             last_checked_at=checked, last_sync_at=synced, sync_interval_minutes=interval,
                             sources=total, unmapped=unmapped, you_can_read=readable, documents=documents,
                             syncing=bool(last_run and last_run["status"] == "running"),
-                            last_run=last_run if user.is_admin else None,
-                            events_status=events_status, last_event_at=last_event_at)
+                            last_run=last_run if user.is_admin else None)
         if user.is_admin:
             item.config = config
-            item.events_error = events_error
-            if kind == "gitlab":
-                item.webhook_url = f"{PUBLIC_URL or '<public URL of the API>'}/hooks/gitlab/{cid}"
             try:
                 item.token_hint = hint(decrypt(token))
             except RuntimeError:
@@ -289,10 +273,7 @@ def edit_connector(connector_id: UUID, body: ConnectorEdit, admin: User = Depend
         conn.execute(f"UPDATE connectors SET {sets} WHERE id = %(id)s", {**changes, "id": cid})
         record(conn, admin.id, "connector.updated", name=name,
                changed=sorted("token" if k == "token_encrypted" else k for k in changes if k not in ("status", "last_error")))
-        result = _one(conn, admin, cid)
-    if "enabled" in changes:
-        events.reload()
-    return result
+        return _one(conn, admin, cid)
 
 
 @router.delete("/admin/connectors/{connector_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -302,7 +283,6 @@ def remove_connector(connector_id: UUID, admin: User = Depends(admin_user)) -> N
         if not row:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "No such connector")
         record(conn, admin.id, "connector.removed", name=row[0])
-    events.reload()
 
 
 @router.post("/admin/connectors/{connector_id}/check", response_model=ConnectorOut)
@@ -336,89 +316,6 @@ def sync_now(connector_id: UUID, background: BackgroundTasks, admin: User = Depe
         record(conn, admin.id, "connector.synced", name=name[0])
     background.add_task(run_sync, str(connector_id), "manual")
     return {"started": True}
-
-
-class EventsIn(BaseModel):
-    app_token: str | None = Field(default=None, min_length=10, max_length=500)  # Slack xapp-…
-    register_webhooks: bool = False                                             # GitLab
-
-
-class EventsOut(BaseModel):
-    connector: ConnectorOut
-    secret: str | None = None          # GitLab webhook secret, shown once
-    registered: list[str] = []
-    problems: list[str] = []
-
-
-@router.put("/admin/connectors/{connector_id}/events", response_model=EventsOut)
-def enable_events(connector_id: UUID, body: EventsIn, admin: User = Depends(admin_user)) -> EventsOut:
-    """Slack: test and save an app-level token, then start listening.
-    GitLab: create a webhook secret and, with register_webhooks and PUBLIC_URL set, add the webhook to every project."""
-    cid = str(connector_id)
-    with connect() as conn:
-        row = conn.execute("SELECT kind, name, config, token_encrypted FROM connectors WHERE id = %s", (cid,)).fetchone()
-        if not row:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, "No such connector")
-        kind, name, config, token = row
-        secret, registered, problems = None, [], []
-
-        if kind == "slack":
-            if not body.app_token or not body.app_token.startswith("xapp-"):
-                raise HTTPException(status.HTTP_400_BAD_REQUEST, "Slack needs an app-level token that starts with xapp-")
-            try:
-                open_socket_url(body.app_token)
-            except (RuntimeError, OSError) as e:
-                raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Couldn't open Socket Mode: {e}") from None
-            conn.execute("UPDATE connectors SET events_secret_encrypted = %s, events_status = 'starting', "
-                         "events_error = NULL WHERE id = %s", (encrypt(body.app_token), cid))
-        else:
-            secret = secrets.token_urlsafe(32)
-            conn.execute("UPDATE connectors SET events_secret_encrypted = %s, events_status = 'listening', "
-                         "events_error = NULL WHERE id = %s", (encrypt(secret), cid))
-            if body.register_webhooks:
-                if not PUBLIC_URL:
-                    problems.append("Set PUBLIC_URL in .env to a public address of the API first")
-                else:
-                    api = client(kind, decrypt(token), config)
-                    hook_url = f"{PUBLIC_URL}/hooks/gitlab/{cid}"
-                    projects = conn.execute("SELECT container_id, container_name FROM source_access "
-                                            "WHERE connector_id = %s", (cid,)).fetchall()
-                    for project_id, project_name in projects:
-                        try:
-                            _add_gitlab_hook(api, project_id, hook_url, secret)
-                            registered.append(project_name)
-                        except ConnectorError as e:
-                            problems.append(f"{project_name}: {e}")
-        record(conn, admin.id, "connector.events_on", name=name)
-        out = EventsOut(connector=_one(conn, admin, cid), secret=secret, registered=registered, problems=problems)
-    events.reload()
-    return out
-
-
-def _add_gitlab_hook(api, project_id: str, url: str, secret: str) -> None:
-    body = {"url": url, "token": secret, "issues_events": True, "note_events": True, "wiki_page_events": True,
-            "confidential_issues_events": True, "confidential_note_events": True, "push_events": False,
-            "enable_ssl_verification": True}
-    req = urllib.request.Request(f"{api.base}/projects/{project_id}/hooks", data=json.dumps(body).encode(),
-                                 method="POST", headers={**api.headers, "Content-Type": "application/json"})
-    try:
-        urllib.request.urlopen(req, timeout=20).close()
-    except urllib.error.HTTPError as e:
-        raise ConnectorError(f"HTTP {e.code}: {e.read().decode(errors='replace')[:150]}") from None
-
-
-@router.delete("/admin/connectors/{connector_id}/events", response_model=ConnectorOut)
-def disable_events(connector_id: UUID, admin: User = Depends(admin_user)) -> ConnectorOut:
-    cid = str(connector_id)
-    with connect() as conn:
-        row = conn.execute("UPDATE connectors SET events_secret_encrypted = NULL, events_status = 'off', "
-                           "events_error = NULL WHERE id = %s RETURNING name", (cid,)).fetchone()
-        if not row:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, "No such connector")
-        record(conn, admin.id, "connector.events_off", name=row[0])
-        result = _one(conn, admin, cid)
-    events.reload()
-    return result
 
 
 @router.get("/admin/connectors/{connector_id}/access", response_model=list[AccessOut])

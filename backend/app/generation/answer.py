@@ -46,6 +46,8 @@ class Answer:
     cited: list[int]             # source numbers the answer actually cites
     prompt_tokens: int
     completion_tokens: int
+    trace_id: str | None = None  # Langfuse trace, set by graph.ask
+    trace_url: str | None = None
 
 
 @lru_cache(maxsize=1)

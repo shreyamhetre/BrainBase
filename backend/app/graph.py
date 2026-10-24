@@ -1,14 +1,14 @@
-"""The question-answering graph. Step 3 has the knowledge route only:
+"""The question-answering graph. For now the knowledge route only:
 
     START → retrieve → answer → END
 
-The router (knowledge / action / clarify) is added in step 8. Each node is traced in
-Langfuse with @observe, nested under one trace per question.
+The router (knowledge / action / clarify) comes with the MCP actions. Each node is traced in
+Langfuse with @observe, nested under one trace per question, tagged with the user who asked.
 """
 
 from typing import TypedDict
 
-from langfuse import observe
+from langfuse import get_client, observe, propagate_attributes
 from langgraph.graph import END, START, StateGraph
 
 from app.db.connection import connect
@@ -49,6 +49,15 @@ GRAPH = build_graph()
 
 
 @observe(name="question")
-def ask(question: str, roles: list[str] | None = None) -> Answer:
-    state = GRAPH.invoke({"question": question, "roles": roles or ["all"]})
-    return state["answer"]
+def _ask(question: str, roles: list[str]) -> Answer:
+    answer = GRAPH.invoke({"question": question, "roles": roles})["answer"]
+    langfuse = get_client()
+    answer.trace_id = langfuse.get_current_trace_id()
+    answer.trace_url = langfuse.get_trace_url(trace_id=answer.trace_id) if answer.trace_id else None
+    return answer
+
+
+def ask(question: str, roles: list[str] | None = None, user_email: str | None = None) -> Answer:
+    """Answer one question for someone with these roles. user_email labels the Langfuse trace."""
+    with propagate_attributes(user_id=user_email, metadata={"roles": ",".join(roles or [])}):
+        return _ask(question, roles or ["all"])

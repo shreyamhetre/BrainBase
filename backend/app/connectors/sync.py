@@ -33,18 +33,12 @@ def _names(conn) -> dict[str, str]:
     return {h: name for slack, gitlab, name in rows for h in (slack, gitlab) if h}
 
 
-def run_sync(connector_id: str, trigger: str = "manual", container_id: str | None = None) -> dict:
-    """Sync one connector, or only one of its channels or projects (container_id, used by events).
-
-    Returns the run's counts, or {'skipped': reason}. A full sync skips when another is running;
-    an event sync waits for it, so a change that arrives mid-sync is never lost.
-    """
+def run_sync(connector_id: str, trigger: str = "manual") -> dict:
+    """Sync one connector. Returns the run's counts, or {'skipped': reason} when another sync of it is running."""
     with connect() as conn:
         conn.autocommit = True  # the run row and the lock are visible immediately
         lock = zlib.crc32(connector_id.encode())
-        if container_id:
-            conn.execute("SELECT pg_advisory_lock(%s)", (lock,))
-        elif not conn.execute("SELECT pg_try_advisory_lock(%s)", (lock,)).fetchone()[0]:
+        if not conn.execute("SELECT pg_try_advisory_lock(%s)", (lock,)).fetchone()[0]:
             return {"skipped": "already syncing"}
         try:
             row = conn.execute("SELECT kind, name, config, token_encrypted, enabled FROM connectors WHERE id = %s",
@@ -57,7 +51,7 @@ def run_sync(connector_id: str, trigger: str = "manual", container_id: str | Non
             run_id = conn.execute("INSERT INTO sync_runs (connector_id, trigger) VALUES (%s, %s) RETURNING id",
                                   (connector_id, trigger)).fetchone()[0]
             try:
-                stats = _sync(conn, connector_id, kind, config, decrypt(token), container_id)
+                stats = _sync(conn, connector_id, kind, config, decrypt(token))
             except (ConnectorError, RuntimeError, KeyError) as e:
                 conn.execute("UPDATE sync_runs SET status = 'error', error = %s, finished_at = now() WHERE id = %s",
                              (str(e), run_id))
@@ -69,24 +63,20 @@ def run_sync(connector_id: str, trigger: str = "manual", container_id: str | Non
                 "chunks = %s WHERE id = %s",
                 (stats.seen, stats.changed, stats.deleted, stats.chunks, run_id),
             )
-            if container_id:
-                conn.execute("UPDATE connectors SET last_event_at = now() WHERE id = %s", (connector_id,))
-            else:
-                conn.execute("UPDATE connectors SET last_sync_at = now(), status = 'connected', last_error = NULL "
-                             "WHERE id = %s", (connector_id,))
+            conn.execute("UPDATE connectors SET last_sync_at = now(), status = 'connected', last_error = NULL "
+                         "WHERE id = %s", (connector_id,))
             log.info("synced %s: %s", name, stats)
             return stats.__dict__
         finally:
             conn.execute("SELECT pg_advisory_unlock(%s)", (lock,))
 
 
-def _sync(conn, connector_id: str, kind: str, config: dict, token: str, only: str | None = None):
+def _sync(conn, connector_id: str, kind: str, config: dict, token: str):
     api = client(kind, token, config)
     names = _names(conn)
     containers = conn.execute(
-        "SELECT id::text, container_id, container_name, allowed_roles FROM source_access "
-        "WHERE connector_id = %s AND (%s::text IS NULL OR container_id = %s)",
-        (connector_id, only, only),
+        "SELECT id::text, container_id, container_name, allowed_roles FROM source_access WHERE connector_id = %s",
+        (connector_id,),
     ).fetchall()
 
     def docs():
