@@ -12,14 +12,38 @@
   --navy: #1e2a4a;
 }
 
+/* Dark: follows the device unless Settings chose Light or Dark (data-theme on <html>) */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --background: #0f1220;
     --surface: #171b2e;
     --foreground: #e8eaf4;
     --muted: #9aa1bb;
     --border: #2a3049;
     --navy: #c9d1ef;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --background: #0f1220;
+  --surface: #171b2e;
+  --foreground: #e8eaf4;
+  --muted: #9aa1bb;
+  --border: #2a3049;
+  --navy: #c9d1ef;
+  color-scheme: dark;
+}
+
+/* Tailwind's dark: variant follows the same rule */
+@custom-variant dark {
+  &:where([data-theme="dark"], [data-theme="dark"] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-theme="light"]) *) {
+      @slot;
+    }
   }
 }
 

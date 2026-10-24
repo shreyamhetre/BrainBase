@@ -31,6 +31,8 @@ GitMore is a company brain: one chat interface over everything a company knows, 
 
 It is built around GitLab, a remote company of about 2,000 people, using its **real public handbook** together with **synthetic Slack threads, wiki pages and confidential GitLab issues** that reference the real content, so the sources read like one company. The synthetic sources mirror the tools GitLab actually uses.
 
+GitMore is built as a **configurable system**, with GitLab as the example company. Connectors, which roles can read each channel or project, and the MCP tools the assistant may use are all set up from the app by an admin, not in code.
+
 > [!NOTE]
 > GitMore is an unofficial learning project. It is not affiliated with or endorsed by GitLab.
 
@@ -38,14 +40,16 @@ It is built around GitLab, a remote company of about 2,000 people, using its **r
 
 | Feature | Description |
 |---|---|
-| Connectors (planned) | GitLab and Slack connectors sync content and its permissions into one index |
-| Router (planned) | One question box; the router chooses search, an action or a clarifying question |
-| Actions through MCP (planned) | Create a GitLab issue or post to Slack, after the user confirms |
+| Connectors (planned) | GitLab and Slack connectors, added from the app, sync content and its permissions into one index within seconds of a change |
+| Router (planned) | One question box; the router chooses search, a live lookup, an action or a clarifying question |
+| Actions through MCP (planned) | Create a GitLab issue or post to Slack through the official MCP servers, after the user confirms |
+| Conversations (planned) | Chat history per user, so follow-up questions work |
 | Hybrid search | Vector search for meaning and keyword search for exact terms, merged with reciprocal rank fusion |
 | Reranking | A cross-encoder reads the top candidates closely and keeps the best five |
 | Cited answers | Every claim links to the passage it came from |
 | Role-based access | Each chunk records which roles may read it; restricted text never reaches the LLM |
-| Admin console | Admins assign roles and deactivate accounts, with a confirmation before every change |
+| Admin console | Overview, users and roles, access requests and an activity log; every change is confirmed and recorded |
+| Access requests | People ask for a role from their profile; the admin approves or denies with a note |
 | Honest "I don't know" | Says so when there is no evidence instead of guessing |
 | Measured quality | An evaluation set rerun after every change |
 | Tracing | Every question traced in Langfuse: retrieved chunks, prompt, tokens, cost and latency |
@@ -68,7 +72,7 @@ flowchart LR
         S[Slack channels]
     end
 
-    subgraph Connectors[Connectors, run on a schedule]
+    subgraph Connectors[Connectors, configured in the app]
         direction TB
         CH[Handbook loader<br/>git clone + selection rules]
         CG[GitLab connector<br/>issues + wiki API]
@@ -83,6 +87,7 @@ flowchart LR
     CH --> SY
     CG --> SY
     CS --> SY
+    EV[Slack events + GitLab webhooks<br/>a change arrives within seconds] --> SY
 
     SY[Incremental sync<br/>new, changed, deleted] --> P[Parse and clean]
     P --> C[Chunk by heading<br/>or thread]
@@ -95,10 +100,11 @@ flowchart LR
     classDef planned fill:#ffffff,stroke:#5d647e,color:#1b2140,stroke-dasharray:5 4
     class DB store
     class CH,P,C,M,E built
-    class CG,CS,SY planned
+    class CG,CS,SY,EV planned
 ```
 
-- **Connectors carry permissions.** Each source maps to roles: a Slack channel such as `#hr-private` maps to `hr`, a confidential issue in the security project maps to `security`, the handbook maps to everyone. Those roles are copied onto every chunk.
+- **Near real time.** Slack events (over Socket Mode, no public URL needed) and GitLab webhooks re-index a changed thread or issue within seconds. A scheduled sync, with its interval set per connector, catches anything missed and removes deleted items.
+- **Connectors carry permissions.** Each source maps to roles: a Slack channel such as `#hr-private` maps to `hr`, a confidential issue in the security project maps to `security`, the handbook maps to everyone. Those roles are copied onto every chunk. A newly found channel or project is visible to admins only until it is mapped, so nothing leaks by default.
 - **Incremental sync** fetches only new or changed content and removes deleted items, so stale answers don't pile up.
 - **Metadata** on every chunk: source, URL, heading path or thread, author, date, design-document status and allowed roles.
 - The synthetic Slack messages, issues and wiki pages are already published to a real Slack workspace and a private GitLab group by `backend/scripts/publish_synthetic.py`, so the connectors read them through the real APIs.
@@ -107,12 +113,14 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    U([Message + user's roles]) --> API[FastAPI<br/>JWT cookie checked]
+    U([Message + chat history + user's roles]) --> API[FastAPI<br/>JWT cookie checked]
     API --> RT{LangGraph router<br/>what does this need?}
 
     RT -- knowledge --> EQ[Embed question<br/>BGE-M3]
     RT -- action --> AC[Action card<br/>user confirms]
     RT -- unclear --> CL[Clarifying question]
+    RT -- live lookup --> LL[Live lookup<br/>one named issue or channel<br/>roles checked first]
+    LL --> L
 
     subgraph PG[Postgres: one query, role filter in the WHERE clause]
         direction LR
@@ -137,13 +145,15 @@ flowchart TD
     classDef planned fill:#ffffff,stroke:#5d647e,color:#1b2140,stroke-dasharray:5 4
     class U,A io
     class API,EQ,V,K,F,RR,L built
-    class RT,AC,CL,MCP planned
+    class RT,AC,CL,MCP,LL planned
     style PG fill:#f7f7fb,stroke:#5d647e,color:#1b2140
 ```
 
 - **The router picks the route**, so users never choose a tool or type a command. A single message can need both routes: "Summarize the PTO policy and post it to #hr" searches first, then acts.
+- **The router also rewrites follow-ups.** With the last few turns of the conversation, "and for adoption?" becomes a full question before searching, in the same model call.
 - **Knowledge goes through RAG; actions go through MCP.** Today every message takes the knowledge route.
-- **MCP is used for writes only.** All reads come from the indexed, permission-tagged data, because an admin-connected MCP server could see more than the asking user is allowed to.
+- **Reads come from the index.** The one exception is the live lookup, for questions that name one item ("what's the latest on engineering#3?"): it fetches that item from the tool, but only after checking that the user's roles can read its project or channel. A tool connection sees more than any single user may, so GitMore never searches tools live on a user's behalf.
+- **Actions run through the official GitLab and Slack MCP servers**, connected once by the admin. GitMore checks the user's role before every action and marks the post or issue "on behalf of" that person.
 - **Every action needs the user's confirmation** before anything is written to Slack or GitLab.
 - **The permission filter runs inside the search query**, so restricted chunks are never retrieved, ranked or sent to the model.
 - **The same embedding model** encodes chunks and questions; **fusion** merges the vector and keyword lists by rank, and the **reranker** keeps the best five.
@@ -171,6 +181,21 @@ flowchart LR
 - New sign-ups get handbook access only; an admin grants roles.
 - The admin holds every role. Admins cannot deactivate themselves.
 - Roles are read from the database on every request, so a change takes effect immediately.
+- People can request a role from their profile; the admin approves or denies it in the console, with an optional note.
+- Every change to roles, accounts and requests is written to an activity log.
+
+## Configuration and security
+
+| Managed in the app | Who | What it controls |
+|---|---|---|
+| Connectors | Admin adds and runs; everyone sees status | Which tools are indexed, their tokens, sync interval, Sync now |
+| Access mapping | Admin | Which roles can read each channel or project |
+| MCP tools | Admin turns on or off; everyone sees what they can use | Which actions exist and which roles may use each one |
+| Users, roles, requests | Admin | Who can read what |
+
+- **Two kinds of secret, kept apart.** The login token (a JWT) lives in the browser in an httpOnly cookie that page scripts can't read. Tool tokens (Slack, GitLab) never reach the browser: they are stored in the database **encrypted**, with the key in `.env`, so a copy of the database alone can't use them.
+- **Passwords** are bcrypt hashes. **Tool tokens** get the fewest permissions possible: read-only for syncing, a separate connection for actions.
+- **The database** is reachable only from the machine (or private network) running GitMore, and the app connects as a user limited to its own tables.
 
 ## Tech stack
 
@@ -185,9 +210,10 @@ flowchart LR
 | Orchestration | LangGraph | Steps as a graph with state and branching |
 | Auth | JWT, bcrypt | Stateless sessions in an httpOnly cookie |
 | Frontend | Next.js 16, TypeScript, Tailwind CSS | Chat and admin console, responsive on all screen sizes |
-| Connectors | GitLab API, Slack API | Incremental sync of issues, wiki pages and channels, with their permissions |
-| Actions | MCP servers (GitLab, Slack) | Standard way to give the agent tools; used for writes only |
-| Background sync | APScheduler | Re-syncs sources on a schedule |
+| Connectors | GitLab API and webhooks, Slack API and Events (Socket Mode) | Sync issues, wiki pages and channels with their permissions, within seconds of a change |
+| Actions | Official GitLab and Slack MCP servers | Standard way to give the agent tools; connected once by the admin |
+| Background sync | APScheduler | Scheduled safety-net sync per connector |
+| Secrets | Fernet encryption (Python `cryptography`) | Tool tokens encrypted in the database, key in `.env` |
 | Tracing | Langfuse (self-hosted) | Chunks, prompt, tokens, cost and latency per question |
 | Packaging | Docker Compose | One command for the database |
 
@@ -230,7 +256,7 @@ OPENAI_API_KEY=
 LLM_BASE_URL=https://api.openai.com/v1
 LLM_MODEL=gpt-4o-mini
 
-JWT_SECRET=                    # long random string
+JWT_SECRET=                    # python -c "import secrets; print(secrets.token_urlsafe(48))"
 JWT_EXPIRE_HOURS=24
 ALLOWED_EMAIL_DOMAIN=gitmore.com
 ADMIN_EMAIL=you@gitmore.com
@@ -333,9 +359,15 @@ Permission, conflict and expertise questions are added as the synthetic sources 
 | 3 | Query path: hybrid search, fusion, rerank, cited answers, Langfuse tracing | Done |
 | 4 | Evaluation baseline | Done |
 | 5 | Product docs and public issues | Skipped |
-| 6 | Login and role-based access, synthetic Slack, wiki and issues published; connectors into the index | In progress |
-| 7 | Next.js chat and admin console | In progress |
-| 8 | Router, MCP actions with confirmation, clarifying questions | Planned |
+| 6 | Login and role-based access; synthetic Slack, wiki and issues published | Done |
+| 7 | Next.js app: sidebar layout, chat, profile, settings, admin console with access requests and activity log | Done |
+| 8 | Settings foundation: connectors, access mapping and MCP tables, encrypted tokens | Next |
+| 9 | Connectors: GitLab and Slack sync, Slack events and GitLab webhooks, Connectors page | Planned |
+| 10 | Permission evaluation: questions asked as specific users, zero leaks | Planned |
+| 11 | Conversations: chat history, sidebar list, follow-up questions | Planned |
+| 12 | Router: knowledge, live lookup, action and clarify routes | Planned |
+| 13 | MCP actions: official servers connected in the app, action cards with confirmation, role checks | Planned |
+| 14 | Routing evaluation, streaming answers, query inspector | Planned |
 
 ## Project structure
 
@@ -343,8 +375,9 @@ Permission, conflict and expertise questions are added as the synthetic sources 
 GitMore/
 ├── backend/
 │   ├── app/
-│   │   ├── api/           FastAPI routes: ask, auth, admin
+│   │   ├── api/           FastAPI routes: ask, auth, account, admin
 │   │   ├── auth.py        JWT cookies, password hashing, role checks
+│   │   ├── audit.py       activity log
 │   │   ├── ingestion/     selection rules, cleaning, chunking
 │   │   ├── retrieval/     hybrid search, fusion, rerank, permission filter
 │   │   ├── generation/    prompt, LLM call, citations
@@ -352,7 +385,7 @@ GitMore/
 │   │   └── db/            connection and migration runner
 │   ├── scripts/           seeding, publishing, evaluation and inspection scripts
 │   └── requirements*.txt  GPU, CPU and shared dependencies
-├── frontend/              Next.js chat and admin console
+├── frontend/              Next.js app: chat, profile, settings, connectors, MCP tools, admin console
 ├── db/
 │   ├── init/              runs on first database start (enables pgvector)
 │   └── migrations/        numbered schema changes

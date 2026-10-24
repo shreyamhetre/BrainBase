@@ -42,8 +42,8 @@ def verify_password(password: str, password_hash: str) -> bool:
 
 
 def create_token(user_id: str) -> str:
-    if not JWT_SECRET:
-        raise RuntimeError("JWT_SECRET is not set in .env")
+    if len(JWT_SECRET) < 32:  # a short or placeholder secret lets anyone forge login tokens
+        raise RuntimeError("JWT_SECRET in .env must be a random string of at least 32 characters")
     now = datetime.now(timezone.utc)
     claims = {"sub": user_id, "iat": now, "exp": now + timedelta(hours=JWT_EXPIRE_HOURS)}
     return jwt.encode(claims, JWT_SECRET, algorithm=ALGORITHM)

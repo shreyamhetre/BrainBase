@@ -56,21 +56,29 @@ Result: about 9M tokens, roughly 25,000 chunks.
 
 The brain has two halves: an ingestion pipeline that prepares all content ahead of time, and a fast query path that runs for each message.
 
-```
-INGESTION (runs ahead of time, on a schedule)
-  connector sync (new/changed/deleted only) → parse → chunk
-  → attach metadata + permissions → embed (BGE-M3)
-  → Postgres (pgvector + full-text + metadata + permissions)
+GitMore is a configurable system with GitLab as the example company: connectors, access mapping (which roles read each channel or project) and MCP tools are managed in the app by an admin, not in code.
 
-QUERY (runs for every message)
-  message → LangGraph router: what does this need?
-    knowledge → rewrite → embed question (BGE-M3)
+```
+INGESTION (background, not part of LangGraph)
+  connectors (added in the app, tokens encrypted in the database)
+    Slack events (Socket Mode) + GitLab webhooks → re-index one changed item within seconds
+    scheduled sync per connector (safety net: missed events, deletions) + Sync now
+  → parse → chunk (heading, or one Slack thread) → attach metadata + allowed roles
+  → embed (BGE-M3) → Postgres (pgvector + full-text + metadata + permissions)
+
+QUERY (LangGraph, runs for every message)
+  message + recent chat history → router: what does this need?
+    (the router call also rewrites follow-ups into a standalone question)
+    knowledge → embed question (BGE-M3)
       → hybrid search (vector + keyword, permission filter in the same query)
       → merge with RRF → rerank top 50 → top 5 (BGE v2-m3)
       → LLM answer with citations (GPT-4o mini)
-    action    → action card → user confirms → MCP write (ticket · post · page)
+    live lookup → fetch one named item live (e.g. engineering#3, today's #sales)
+                  only if the user's roles can read that project or channel
+    action    → action card → user confirms → MCP write (issue · post)
+                through the official GitLab and Slack MCP servers, connected once by the admin
                 (uses search results as context when the action needs them)
-      → LLM reply with the result (e.g. "Ticket ENG-123 created")
+      → LLM reply with the result (e.g. "Issue engineering#12 created")
     unclear   → ask a clarifying question (greetings, vague requests)
   → stream to UI
   (every step traced in Langfuse)
@@ -78,14 +86,18 @@ QUERY (runs for every message)
 
 **Ingestion**
 
-- **Sync first:** connectors fetch only new or changed content, and deleted docs are removed from the index, so stale answers don't pile up.
+- **Near real time:** Slack events and GitLab webhooks re-index a changed thread or issue within seconds; a scheduled sync per connector catches missed events and removes deleted items, so stale answers don't pile up.
+- **Deny by default:** a newly found channel or project is visible to admins only until the admin maps it to roles.
+- **Slack unit:** one document per thread (parent plus replies), so a reply keeps its question.
 - **Metadata and permissions at chunk time:** each chunk carries its source, URL, date and who can see it, copied from the original doc. The permission filter checks these fields later.
 
 **Query**
 
 - **One entry point, router decides:** users ask in plain language; a LangGraph router picks knowledge (RAG), action (MCP), both, or a clarifying question. For example, "Summarize the PTO policy and post it to #hr" searches first, then acts.
 - **No separate rewrite call:** each message costs one answer call. Step 3 answers standalone questions (retrieve → answer). Follow-ups in the chat (step 7) search with the previous question plus the new one and pass the chat history to the answer call, still one call. In step 8 the router's call also returns the standalone question, so rewriting adds no extra call.
-- **MCP for writes only:** all reads come from the indexed, permission-tagged data. Live MCP reads are skipped for now, because admin-connected MCP servers could see more than the user is allowed to.
+- **Reads come from the index:** a tool connection sees more than any single user may, so GitMore never searches tools live. The one exception is the live lookup of a single named item, allowed only after checking the user's roles against that project or channel.
+- **Actions through the official MCP servers:** the admin connects each server once; GitMore checks the user's role before every action and marks it "on behalf of" that person. Every action is confirmed by the user first and recorded.
+- **Conversations:** each chat is stored (conversations and messages tables); the backend loads recent turns from the database, never from the browser.
 - **Embed the question with the same model:** after rewriting, the question is embedded with BGE-M3, the same model used for chunks, or vector search won't match properly.
 - **Permission filter inside the search:** applied as a WHERE condition in the same SQL query as the search, so restricted chunks never reach the LLM.
 - **Merge before reranking:** vector and keyword search return separate lists, combined with reciprocal rank fusion (RRF).
@@ -109,8 +121,10 @@ Everything below is free or has a free tier, and runs on a laptop plus one LLM A
 | Reranker | BGE Reranker v2-m3 | Free, fast, proven baseline |
 | LLM | GPT-4o mini (OpenAI API) | Cheap, fast, good at grounded answers |
 | Orchestration | LangGraph | Steps as a graph with shared state, branching and retries; built for agents |
-| Connectors and actions | MCP servers, connected by an admin, used for writes only | Standard way to give agents tools; reads stay on permission-tagged data |
-| Background sync | A scheduled job (APScheduler or cron) | Incremental re-sync of sources |
+| Connectors | GitLab API + webhooks, Slack API + Events (Socket Mode), configured in the app | Sync content and its permissions within seconds of a change |
+| Actions | Official GitLab and Slack MCP servers, connected once by the admin | Standard way to give agents tools; role-checked and confirmed |
+| Background sync | APScheduler | Scheduled safety-net sync per connector |
+| Secrets | Tool tokens encrypted in Postgres (Fernet), key in `.env`; login JWT in an httpOnly cookie | A database copy alone can't use the tokens; scripts can't read the login |
 | Frontend | Next.js | Real product feel, streaming chat and admin console |
 | Evaluation | RAGAS plus a custom script | RAG-specific metrics: context precision, recall, faithfulness |
 | Tracing | Langfuse (self-hosted in Docker) | Every step per question: chunks, prompt, tokens, cost, latency |
@@ -118,12 +132,19 @@ Everything below is free or has a free tier, and runs on a laptop plus one LLM A
 
 ## UI: inputs and outputs
 
-The app has two screens: a chat for employees and an admin console for you to see how the brain works inside.
+A left sidebar holds New chat, Chat (with past conversations), Connectors and MCP tools; at the bottom, Admin console (admins only) and the user's initials, which open Profile, Request access, Settings and Log out. On phones the sidebar opens as a drawer.
+
+**Pages**
+
+- **Connectors:** every source with status, last sync and the channels or projects you can read; admins also add connectors, enter tokens, map access, turn sources on or off and run Sync now
+- **MCP tools:** connected servers and their tools, with which ones you can use; admins connect servers, turn tools on or off and choose roles per tool
+- **Profile:** name, title, team, password, your roles, request a role with a reason and see the admin's answer (email is the login, so only an admin changes it)
+- **Settings:** personal preferences such as light or dark theme
 
 **Chat inputs**
 
 - Plain-language question box, with follow-up questions in the same thread
-- Role switcher (Engineer, HR, Manager, Guest) to demo permissions; in a real product the role comes from login, never a dropdown
+- The role comes from login; to demo permissions, log in as different demo people
 - Filters: source, team, date range
 - Upload a file to ask questions about it
 - Actions asked in plain language ("create an issue for this bug"); the router decides. Slash commands such as /ticket or /who-knows are optional shortcuts
@@ -141,7 +162,10 @@ The app has two screens: a chat for employees and an admin console for you to se
 
 **Admin console**
 
-- Connectors: status, last sync time, documents per source
+- Overview: people, active this week, pending requests, people per role
+- Users and roles: search and filter, roles dropdown and active switch, each change confirmed
+- Access requests: approve or deny with a note to the person
+- Activity log: every change to roles, accounts, requests, connectors and actions
 - Query inspector: for any question, the route chosen, the rewritten query, retrieved chunks with scores, reranked order and final prompt
 - Permission tester: run one question as two roles and compare results
 - Evaluation dashboard: accuracy and retrieval metrics per test run
@@ -158,9 +182,15 @@ Steps run in this order, with no fixed dates. One gate: core RAG must pass the e
 | 3 | Query path: LangGraph graph with the knowledge route, hybrid search, RRF, rerank, cited answers. First 20 eval questions. Langfuse tracing. Test through a CLI script or FastAPI's /docs page | Questions return cited answers; traces visible |
 | 4 | Full evaluation set and baseline scores. **Gate:** core RAG passes before new sources are added | Baseline metrics recorded |
 | 5 | Add product docs and issues | Cross-source questions pass |
-| 6 | Synthetic Slack, Google Docs and confidential GitLab issues through connector sync, plus role-based permissions enforced | Permission tests pass with zero leaks |
-| 7 | Next.js chat and admin console | Full demo runs in the browser |
-| 8 | Action route: MCP writes with confirmation, clarify route, then stretch goals | Actions work after user confirms |
+| 6 | Login and role-based access; synthetic Slack, wiki and confidential GitLab issues published | Roles enforced in search; content in real tools |
+| 7 | Next.js app: sidebar layout, chat, profile, settings, admin console with access requests and activity log | Full demo runs in the browser |
+| 8 | Settings foundation: roles, connectors, access mapping and MCP tables; encrypted tokens | Admin can add a connector and map access |
+| 9 | Connectors: GitLab and Slack sync, Slack events and GitLab webhooks, Connectors page | A change in Slack or GitLab is searchable within seconds |
+| 10 | Permission evaluation: questions asked as specific users | Zero leaks |
+| 11 | Conversations: history, sidebar list, follow-ups | Follow-up questions answer correctly |
+| 12 | Router: knowledge, live lookup, action and clarify routes | Routing accuracy measured |
+| 13 | MCP actions: official servers connected in the app, action cards, role checks, audit | Actions work only after the user confirms |
+| 14 | Routing evaluation, streaming answers, query inspector, then stretch goals | Metrics recorded |
 
 If step 4 misses the gate, fix chunking and retrieval before adding sources; everything after builds on retrieval quality.
 
@@ -193,7 +223,7 @@ Start with the 10 most important handbook questions (step 4) and add questions a
 
 Once the core works, each of these teaches one advanced idea:
 
-- **Live MCP reads with per-user authentication:** fetch fresh data from tools using the asking user's own access, not the admin's
+- **Per-user tool connections:** each person connects their own Slack and GitLab account, so live reads and actions use their own access instead of the admin's connection
 - **Knowledge graph** of people, teams, projects and documents, to answer "who owns X?" and "what depends on Y?"
 - **Structured data route**: put issues (labels, assignees, states) in SQL tables and let the brain choose SQL or document search
 - **Proactive digests**: a daily summary of decisions and incidents posted to Slack

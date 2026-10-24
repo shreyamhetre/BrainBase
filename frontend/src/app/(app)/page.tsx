@@ -3,9 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { AnswerText } from "@/components/answer-text";
-import { Header } from "@/components/header";
 import { api, ApiError, type AskResponse, type Source } from "@/lib/api";
-import { useCurrentUser } from "@/lib/use-current-user";
+import { useUser } from "@/lib/user-context";
 
 type Turn = {
   id: number;
@@ -66,7 +65,7 @@ function SourceCard({ source, turnId, highlighted }: { source: Source; turnId: n
 
 export default function ChatPage() {
   const router = useRouter();
-  const user = useCurrentUser();
+  const { user } = useUser();
   const nextId = useRef(0);
   const [turns, setTurns] = useState<Turn[]>([]);
   const [question, setQuestion] = useState("");
@@ -114,7 +113,6 @@ export default function ChatPage() {
 
   return (
     <>
-      <Header user={user} />
       <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col px-4">
         <div className="flex-1 space-y-8 py-8">
           {turns.length === 0 && (

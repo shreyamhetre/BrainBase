@@ -36,7 +36,8 @@ export default function LoginPage() {
     <main className="flex flex-1 items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center text-center">
-          <Image src="/gitmore-logo.png" alt="GitMore: one brain across your company's tools" width={236} height={80} priority />
+          <Image src="/gitMore-readme.png" alt="GitMore: your company's knowledge, in one place" width={1141} height={438}
+            priority className="h-auto w-72 max-w-full" />
         </div>
 
         <form onSubmit={submit} className="space-y-4 rounded-2xl border border-border bg-surface p-6 shadow-sm">

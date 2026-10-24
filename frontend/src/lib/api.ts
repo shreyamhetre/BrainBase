@@ -11,7 +11,45 @@ export type User = {
   title: string | null;
 };
 
-export type AdminUser = User & { is_active: boolean; last_login_at: string | null };
+export type AdminUser = User & { is_active: boolean; last_login_at: string | null; created_at: string };
+
+export type Overview = {
+  users: number;
+  active: number;
+  inactive: number;
+  pending_requests: number;
+  active_last_7_days: number;
+  role_counts: Record<string, number>;
+};
+
+export type RequestStatus = "pending" | "approved" | "denied" | "cancelled";
+
+export type AccessRequest = {
+  id: string;
+  user_id: string;
+  user_name: string;
+  user_email: string;
+  user_team: string | null;
+  user_roles: string[];
+  role: string;
+  reason: string;
+  status: RequestStatus;
+  note: string | null;
+  decided_by: string | null;
+  decided_at: string | null;
+  created_at: string;
+};
+
+export type MyRequest = Pick<AccessRequest, "id" | "role" | "reason" | "status" | "note" | "decided_at" | "created_at">;
+
+export type Activity = {
+  id: number;
+  actor: string | null;
+  action: string;
+  target: string | null;
+  details: Record<string, unknown>;
+  created_at: string;
+};
 
 export type Source = {
   number: number;
@@ -48,7 +86,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     let message = response.statusText;
     try {
       const body = await response.json();
-      message = typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail);
+      message = typeof body.detail === "string" ? body.detail : body.detail?.[0]?.msg ?? JSON.stringify(body.detail);
     } catch {
       // keep the status text
     }
@@ -57,17 +95,34 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   return response.status === 204 ? (undefined as T) : response.json();
 }
 
+const json = (method: string, body: unknown): RequestInit => ({ method, body: JSON.stringify(body) });
+
 export const api = {
-  login: (email: string, password: string) =>
-    request<{ user: User }>("/auth/login", { method: "POST", body: JSON.stringify({ email, password }) }),
+  login: (email: string, password: string) => request<{ user: User }>("/auth/login", json("POST", { email, password })),
   signup: (name: string, email: string, password: string) =>
-    request<{ user: User }>("/auth/signup", { method: "POST", body: JSON.stringify({ name, email, password }) }),
+    request<{ user: User }>("/auth/signup", json("POST", { name, email, password })),
   logout: () => request<void>("/auth/logout", { method: "POST" }),
   me: () => request<User>("/auth/me"),
-  ask: (question: string) =>
-    request<AskResponse>("/ask", { method: "POST", body: JSON.stringify({ question }) }),
+  ask: (question: string) => request<AskResponse>("/ask", json("POST", { question })),
+
+  updateProfile: (changes: { name: string; title: string | null; team: string | null }) =>
+    request<User>("/account/profile", json("PATCH", changes)),
+  changePassword: (current_password: string, new_password: string) =>
+    request<void>("/account/password", json("POST", { current_password, new_password })),
+  myRequests: () => request<MyRequest[]>("/account/requests"),
+  requestRole: (role: string, reason: string) => request<MyRequest>("/account/requests", json("POST", { role, reason })),
+  cancelRequest: (id: string) => request<void>(`/account/requests/${id}`, { method: "DELETE" }),
+
+  overview: () => request<Overview>("/admin/overview"),
   users: () => request<AdminUser[]>("/admin/users"),
   roles: () => request<string[]>("/admin/roles"),
-  updateUser: (id: string, changes: Partial<Pick<AdminUser, "roles" | "is_admin" | "is_active">>) =>
-    request<AdminUser>(`/admin/users/${id}`, { method: "PATCH", body: JSON.stringify(changes) }),
+  updateUser: (id: string, changes: Partial<Pick<AdminUser, "roles" | "is_active">>) =>
+    request<AdminUser>(`/admin/users/${id}`, json("PATCH", changes)),
+  requests: (status: "pending" | "decided") => request<AccessRequest[]>(`/admin/requests?status=${status}`),
+  decide: (id: string, approve: boolean, note: string | null) =>
+    request<AccessRequest>(`/admin/requests/${id}/decision`, json("POST", { approve, note })),
+  activity: (limit = 100) => request<Activity[]>(`/admin/activity?limit=${limit}`),
 };
+
+// Roles anyone can request. Kept here because /admin/roles is admin-only.
+export const CONTENT_ROLES = ["engineer", "hr", "manager", "security", "sales"];
