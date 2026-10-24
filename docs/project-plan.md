@@ -185,7 +185,7 @@ Steps run in this order, with no fixed dates. One gate: core RAG must pass the e
 | 7 | Next.js app: sidebar layout, chat, profile, settings, admin console with access requests and activity log | Full demo runs in the browser |
 | 8 | Settings foundation: roles, connectors, access mapping and MCP tables; encrypted tokens | Admin can add a connector and map access |
 | 9 | Connectors: GitLab and Slack sync on a schedule and on demand, Connectors page | Slack and GitLab content searchable, with permissions |
-| 10 | Permission evaluation: questions asked as specific users | Zero leaks |
+| 10 | Permission and routing evaluation as specific users; login rate limit | Zero leaks; routing accuracy recorded |
 | 11 | Conversations: history, sidebar list, follow-ups | Follow-up questions answer correctly |
 | 12 | Router: knowledge, live lookup, action and clarify routes | Routing accuracy measured |
 | 13 | MCP actions: official servers connected in the app, action cards, role checks, audit | Actions work only after the user confirms |

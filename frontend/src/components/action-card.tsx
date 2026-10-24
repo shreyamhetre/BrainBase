@@ -40,6 +40,7 @@ export function ActionCard({ action }: { action: ProposedAction }) {
   const textKey = TEXT_KEYS.find((k) => typeof args[k] === "string");
   const title = typeof args.title === "string" ? args.title : "";
   const text = textKey ? (args[textKey] as string) : "";
+  const resultUrl = result?.result_url ?? action.result_url ?? null;
 
   async function confirm() {
     setState("running");
@@ -143,8 +144,8 @@ export function ActionCard({ action }: { action: ProposedAction }) {
               </span>
               {tool.done}{action.target ? ` in ${action.target}` : ""}
             </p>
-            {result?.result_url && (
-              <a href={result.result_url} target="_blank" rel="noreferrer"
+            {resultUrl && (
+              <a href={resultUrl} target="_blank" rel="noreferrer"
                 className="inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-4 py-2 text-sm font-medium shadow-sm hover:border-brand/60">
                 Open in {action.server}
                 <Icon name="chevron" className="h-4 w-4 text-muted" />

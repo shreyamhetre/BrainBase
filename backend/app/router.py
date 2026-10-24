@@ -27,6 +27,9 @@ Decide what the message needs and reply with JSON only:
 
 Rules:
 - "knowledge" for questions about policies, processes, people, decisions or anything to look up. This is the default.
+- Earlier messages of the conversation may be given. Use them to understand follow-ups: for knowledge, "question"
+  must stand on its own ("and for adoption?" after a parental leave question → "How much parental leave do I get
+  for adoption?"); for actions, "file that as an issue" refers to the earlier answer.
 - "action" only when the person clearly asks to do something one of the available tools does
   (create an issue, add a comment...). Never invent tools or projects.
 - A message that asks to look something up AND do something with it ("summarize X and file it as an issue",
@@ -69,9 +72,10 @@ def _tools_text(scope: Scope) -> str:
     return "\n".join(lines)
 
 
-def route(message: str, scope: Scope) -> Route:
+def route(message: str, scope: Scope, history: list[dict] | None = None) -> Route:
     # Runs even with no usable tools, so "create an issue" gets a clear reply instead of a search
     projects = "\n".join(f"- {p.name}: project_id {p.id}" for p in scope.projects) or "(none)"
+    earlier = "\n".join(f"{m['role']}: {m['content']}" for m in history or [])
     response = get_client().chat.completions.create(
         name="router",
         model=LLM_MODEL,
@@ -81,7 +85,8 @@ def route(message: str, scope: Scope) -> Route:
             {"role": "system", "content": ROUTER_PROMPT},
             {"role": "user", "content": f"Available tools:\n{_tools_text(scope) or '(none for this person)'}"
                                         f"\n\nProjects you may act in:\n{projects}"
-                                        f"\n\nMessage: {message}"},
+                                        + (f"\n\nEarlier messages:\n{earlier}" if earlier else "")
+                                        + f"\n\nMessage: {message}"},
         ],
     )
     usage = response.usage

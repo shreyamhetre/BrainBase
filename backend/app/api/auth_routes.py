@@ -11,6 +11,7 @@ from pydantic import BaseModel, EmailStr, Field
 from app.auth import (COOKIE_NAME, USER_COLUMNS, User, _token_from, close_session, create_token,
                       current_user, hash_password, session_from, verify_password)
 from app.config import ALLOWED_EMAIL_DOMAIN, JWT_EXPIRE_HOURS
+from app import login_limit
 from app.db.connection import connect
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -78,6 +79,8 @@ def signup(body: SignupRequest, request: Request, response: Response) -> TokenOu
 @router.post("/login", response_model=TokenOut)
 def login(body: LoginRequest, request: Request, response: Response) -> TokenOut:
     email = require_company_email(body.email)
+    ip = login_limit.client_ip(request)
+    login_limit.check(email, ip)  # too many recent failures: refuse before checking the password
     with connect() as conn:
         row = conn.execute(
             f"SELECT {USER_COLUMNS}, password_hash FROM users WHERE lower(email) = %s AND is_active",
@@ -85,8 +88,10 @@ def login(body: LoginRequest, request: Request, response: Response) -> TokenOut:
         ).fetchone()
         # Same message for unknown email and wrong password, so emails can't be probed
         if not row or not verify_password(body.password, row[-1]):
+            login_limit.failed(email, ip)
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Wrong email or password")
         conn.execute("UPDATE users SET last_login_at = now() WHERE id = %s", (row[0],))
+    login_limit.succeeded(email)
     return _issue(request, response, User(*row[:-1]))
 
 

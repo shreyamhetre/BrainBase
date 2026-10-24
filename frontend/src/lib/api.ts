@@ -158,12 +158,14 @@ export type ProposedAction = {
   arguments: Record<string, unknown>;
   status: "proposed" | "done" | "failed" | "cancelled";
   target?: string; // where it lands, e.g. "engineering · issue #7"
+  result_url?: string | null; // set once done, when reopening a saved chat
   signature?: string; // the line GitMore adds to the text
 };
 
 export type ActionResult = ProposedAction & { result_text: string | null; result_url: string | null; created_at: string };
 
 export type AskResponse = {
+  conversation_id: string;
   kind: "answer" | "action" | "clarify";
   answer: string; // the answer, the action summary, or the clarifying question
   sources: Source[];
@@ -172,6 +174,19 @@ export type AskResponse = {
   completion_tokens: number;
   seconds: number;
 };
+
+export type ConversationSummary = { id: string; title: string; updated_at: string };
+
+export type Conversation = ConversationSummary & {
+  messages: { id: number; role: "user" | "assistant"; content: string; kind: string | null; payload: Record<string, unknown>; created_at: string }[];
+};
+
+// Fired after a message is sent or a chat deleted, so the sidebar's recent chats refresh.
+export const CHATS_CHANGED = "gitmore:chats-changed";
+
+// Fired by New chat (and the logo): the open chat clears itself. Needed because a new chat changes
+// its address to /c/<id> without a page load, so a plain link to "/" wouldn't reset it.
+export const NEW_CHAT = "gitmore:new-chat";
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -206,7 +221,11 @@ export const api = {
     request<{ user: User }>("/auth/signup", json("POST", { name, email, password })),
   logout: () => request<void>("/auth/logout", { method: "POST" }),
   me: () => request<User>("/auth/me"),
-  ask: (question: string) => request<AskResponse>("/ask", json("POST", { question })),
+  ask: (question: string, conversationId?: string) =>
+    request<AskResponse>("/ask", json("POST", { question, conversation_id: conversationId ?? null })),
+  conversations: () => request<ConversationSummary[]>("/conversations"),
+  conversation: (id: string) => request<Conversation>(`/conversations/${id}`),
+  deleteConversation: (id: string) => request<void>(`/conversations/${id}`, { method: "DELETE" }),
   confirmAction: (id: string, args: Record<string, unknown>) =>
     request<ActionResult>(`/actions/${id}/confirm`, json("POST", { arguments: args })),
   cancelAction: (id: string) => request<ActionResult>(`/actions/${id}/cancel`, { method: "POST" }),

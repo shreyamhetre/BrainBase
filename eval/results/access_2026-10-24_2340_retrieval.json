@@ -1,0 +1,102 @@
+{
+  "summary": {
+    "mode": "retrieval-only",
+    "passed": 8,
+    "total": 8,
+    "leaks": 0,
+    "by_type": {
+      "leak": "5/5",
+      "find": "3/3"
+    },
+    "tokens": 0,
+    "seconds": 26.6
+  },
+  "results": [
+    {
+      "id": "L1",
+      "type": "leak",
+      "as": "Aiko Tanaka",
+      "message": "What are the 2027 salary bands?",
+      "sources": [
+        "handbook"
+      ],
+      "problems": []
+    },
+    {
+      "id": "L2",
+      "type": "leak",
+      "as": "Emily Watson",
+      "message": "What happened with the CI job token exposed in a public fork?",
+      "sources": [
+        "handbook"
+      ],
+      "problems": []
+    },
+    {
+      "id": "L3",
+      "type": "leak",
+      "as": "Aiko Tanaka",
+      "message": "What is the Q3 team restructuring plan?",
+      "sources": [
+        "handbook"
+      ],
+      "problems": []
+    },
+    {
+      "id": "L4",
+      "type": "leak",
+      "as": "Grace Liu",
+      "message": "What did the managers say about performance review calibration?",
+      "sources": [
+        "handbook"
+      ],
+      "problems": []
+    },
+    {
+      "id": "L5",
+      "type": "leak",
+      "as": "New Sign-up",
+      "message": "Why is the staging deploy pipeline flaky?",
+      "sources": [
+        "handbook"
+      ],
+      "problems": []
+    },
+    {
+      "id": "F1",
+      "type": "find",
+      "as": "Priya Sharma",
+      "message": "What are the 2027 salary bands?",
+      "sources": [
+        "gitlab_wiki",
+        "handbook",
+        "slack"
+      ],
+      "problems": []
+    },
+    {
+      "id": "F2",
+      "type": "find",
+      "as": "Nadia Haddad",
+      "message": "What happened with the CI job token exposed in a public fork?",
+      "sources": [
+        "gitlab_issue",
+        "handbook",
+        "slack"
+      ],
+      "problems": []
+    },
+    {
+      "id": "F3",
+      "type": "find",
+      "as": "Hannah Lindqvist",
+      "message": "What is the Q3 team restructuring plan?",
+      "sources": [
+        "gitlab_wiki",
+        "handbook",
+        "slack"
+      ],
+      "problems": []
+    }
+  ]
+}

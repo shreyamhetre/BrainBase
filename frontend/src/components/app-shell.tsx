@@ -6,7 +6,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Avatar } from "@/components/avatar";
 import { Icon, type IconName } from "@/components/icons";
-import { api } from "@/lib/api";
+import { RecentChats } from "@/components/recent-chats";
+import { api, NEW_CHAT } from "@/lib/api";
 import { useUser } from "@/lib/user-context";
 
 function NavLink({ href, icon, label, active, badge, onNavigate }: {
@@ -91,6 +92,10 @@ function ProfileMenu({ onNavigate }: { onNavigate: () => void }) {
 
 function Sidebar({ onNavigate }: { onNavigate: () => void }) {
   const path = usePathname();
+  const newChat = () => {
+    window.dispatchEvent(new Event(NEW_CHAT));
+    onNavigate();
+  };
   const { user } = useUser();
   const [pending, setPending] = useState(0);
 
@@ -100,26 +105,23 @@ function Sidebar({ onNavigate }: { onNavigate: () => void }) {
 
   return (
     <div className="flex h-full flex-col gap-4 p-3">
-      <Link href="/" onClick={onNavigate} className="flex items-center gap-2 px-2 pt-1">
+      <Link href="/" onClick={newChat} className="flex items-center gap-2 px-2 pt-1">
         <Image src="/small-logo.png" alt="" width={32} height={32} priority />
         <span className="text-lg font-bold tracking-tight"><span className="text-navy">Git</span><span className="text-brand">More</span></span>
       </Link>
 
-      <Link href="/" onClick={onNavigate}
+      <Link href="/" onClick={newChat}
         className="flex items-center justify-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 text-sm font-medium shadow-sm hover:border-brand/60">
         <Icon name="plus" className="h-4 w-4" /> New chat
       </Link>
 
       <nav className="space-y-0.5" aria-label="Main">
-        <NavLink href="/" icon="chat" label="Chat" active={path === "/"} onNavigate={onNavigate} />
+        <NavLink href="/" icon="chat" label="Chat" active={path === "/" || path.startsWith("/c/")} onNavigate={newChat} />
         <NavLink href="/connectors" icon="plug" label="Connectors" active={path === "/connectors"} onNavigate={onNavigate} />
         <NavLink href="/mcp" icon="tool" label="MCP tools" active={path === "/mcp"} onNavigate={onNavigate} />
       </nav>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted">Recent chats</div>
-        <p className="px-3 text-xs text-muted">Your conversations will be listed here.</p>
-      </div>
+      <RecentChats onNavigate={onNavigate} />
 
       <div className="space-y-1 border-t border-border pt-3">
         {user?.is_admin && (
@@ -168,7 +170,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <button onClick={() => setDrawer(true)} aria-label="Open menu" className="-ml-1.5 rounded-md p-1.5 hover:bg-navy/5">
             <Icon name="menu" />
           </button>
-          <Link href="/" className="flex items-center gap-2">
+          <Link href="/" onClick={() => window.dispatchEvent(new Event(NEW_CHAT))} className="flex items-center gap-2">
             <Image src="/small-logo.png" alt="" width={28} height={28} />
             <span className="font-bold tracking-tight"><span className="text-navy">Git</span><span className="text-brand">More</span></span>
           </Link>
