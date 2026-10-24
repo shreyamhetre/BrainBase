@@ -9,8 +9,8 @@ from pydantic import BaseModel, Field
 
 from app.audit import record
 from app.auth import User, admin_user
-from app.config import CONTENT_ROLES
 from app.db.connection import connect
+from app.roles import content_roles
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -80,11 +80,6 @@ def _user_out(row) -> AdminUserOut:
     return AdminUserOut(**dict(zip(AdminUserOut.model_fields, row)))
 
 
-@router.get("/roles")
-def roles(_: User = Depends(admin_user)) -> list[str]:
-    return list(CONTENT_ROLES)
-
-
 @router.get("/overview", response_model=Overview)
 def overview(_: User = Depends(admin_user)) -> Overview:
     with connect() as conn:
@@ -93,12 +88,13 @@ def overview(_: User = Depends(admin_user)) -> Overview:
             "count(*) FILTER (WHERE last_login_at > now() - interval '7 days') FROM users"
         ).fetchone()
         pending = conn.execute("SELECT count(*) FROM access_requests WHERE status = 'pending'").fetchone()[0]
+        roles = content_roles(conn)
         counts = dict(conn.execute(
             "SELECT role, count(*) FROM users, unnest(roles) AS role "
             "WHERE is_active AND NOT is_admin GROUP BY role"
         ).fetchall())
     return Overview(users=users, active=active, inactive=users - active, pending_requests=pending,
-                    active_last_7_days=recent, role_counts={r: counts.get(r, 0) for r in CONTENT_ROLES})
+                    active_last_7_days=recent, role_counts={r: counts.get(r, 0) for r in roles})
 
 
 @router.get("/users", response_model=list[AdminUserOut])
@@ -111,10 +107,6 @@ def list_users(_: User = Depends(admin_user)) -> list[AdminUserOut]:
 @router.patch("/users/{user_id}", response_model=AdminUserOut)
 def update_user(user_id: UUID, body: UserUpdate, admin: User = Depends(admin_user)) -> AdminUserOut:
     user_id = str(user_id)
-    if body.roles is not None:
-        unknown = set(body.roles) - set(CONTENT_ROLES)
-        if unknown:
-            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"Unknown roles: {sorted(unknown)}")
     if user_id == admin.id and (body.is_admin is False or body.is_active is False):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "You can't remove your own admin access")
 
@@ -126,6 +118,10 @@ def update_user(user_id: UUID, body: UserUpdate, admin: User = Depends(admin_use
 
     assignments = ", ".join(f"{column} = %({column})s" for column in updates)
     with connect() as conn:
+        if body.roles is not None:
+            unknown = set(body.roles) - set(content_roles(conn))
+            if unknown:
+                raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, f"Unknown roles: {sorted(unknown)}")
         before = conn.execute("SELECT roles, is_admin, is_active FROM users WHERE id = %s", (user_id,)).fetchone()
         if not before:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")

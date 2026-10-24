@@ -13,8 +13,8 @@ from pydantic import BaseModel, Field
 from app.api.auth_routes import UserOut
 from app.audit import record
 from app.auth import User, current_user, get_user, hash_password, verify_password
-from app.config import CONTENT_ROLES
 from app.db.connection import connect
+from app.roles import content_roles
 
 router = APIRouter(prefix="/account", tags=["account"])
 
@@ -85,12 +85,12 @@ def my_requests(user: User = Depends(current_user)) -> list[MyRequest]:
 
 @router.post("/requests", response_model=MyRequest, status_code=status.HTTP_201_CREATED)
 def request_access(body: NewRequest, user: User = Depends(current_user)) -> MyRequest:
-    if body.role not in CONTENT_ROLES:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"Unknown role: {body.role}")
     if body.role in user.roles:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, f"You already have the {body.role} role")
     try:
         with connect() as conn:
+            if body.role not in content_roles(conn):
+                raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, f"Unknown role: {body.role}")
             row = conn.execute(
                 f"INSERT INTO access_requests (user_id, role, reason) VALUES (%s, %s, %s) RETURNING {MY_REQUEST_COLUMNS}",
                 (user.id, body.role, body.reason.strip()),

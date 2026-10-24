@@ -51,6 +51,46 @@ export type Activity = {
   created_at: string;
 };
 
+export type Role = { name: string; description: string };
+export type AdminRole = Role & { users: number; sources: number; created_at: string };
+
+export type Connector = {
+  id: string;
+  kind: "slack" | "gitlab";
+  name: string;
+  enabled: boolean;
+  status: "connected" | "error";
+  last_error: string | null;
+  last_checked_at: string | null;
+  last_sync_at: string | null;
+  sync_interval_minutes: number;
+  sources: number;
+  unmapped: number;
+  you_can_read: string[];
+  config: Record<string, string | null> | null; // admins only
+  token_hint: string | null; // admins only
+};
+
+export type NewConnector = { kind: "slack" | "gitlab"; name: string; token: string; url?: string; group?: string };
+
+export type SourceAccess = {
+  id: string;
+  container_id: string;
+  container_name: string;
+  container_kind: "public_channel" | "private_channel" | "project";
+  allowed_roles: string[];
+  discovered_at: string;
+};
+
+export type McpServer = {
+  id: string;
+  kind: string;
+  name: string;
+  enabled: boolean;
+  status: string;
+  tools: { id: string; name: string; description: string; enabled: boolean; allowed_roles: string[]; you_can_use: boolean }[];
+};
+
 export type Source = {
   number: number;
   source: string;
@@ -115,7 +155,21 @@ export const api = {
 
   overview: () => request<Overview>("/admin/overview"),
   users: () => request<AdminUser[]>("/admin/users"),
-  roles: () => request<string[]>("/admin/roles"),
+  roles: () => request<Role[]>("/roles"),
+  adminRoles: () => request<AdminRole[]>("/admin/roles"),
+  addRole: (name: string, description: string) => request<AdminRole>("/admin/roles", json("POST", { name, description })),
+  editRole: (name: string, description: string) => request<AdminRole>(`/admin/roles/${name}`, json("PATCH", { description })),
+  deleteRole: (name: string) => request<void>(`/admin/roles/${name}`, { method: "DELETE" }),
+
+  connectors: () => request<Connector[]>("/connectors"),
+  addConnector: (body: NewConnector) => request<Connector>("/admin/connectors", json("POST", body)),
+  editConnector: (id: string, changes: Partial<{ name: string; enabled: boolean; sync_interval_minutes: number; token: string }>) =>
+    request<Connector>(`/admin/connectors/${id}`, json("PATCH", changes)),
+  removeConnector: (id: string) => request<void>(`/admin/connectors/${id}`, { method: "DELETE" }),
+  checkConnector: (id: string) => request<Connector>(`/admin/connectors/${id}/check`, { method: "POST" }),
+  access: (connectorId: string) => request<SourceAccess[]>(`/admin/connectors/${connectorId}/access`),
+  editAccess: (id: string, allowed_roles: string[]) => request<SourceAccess>(`/admin/access/${id}`, json("PATCH", { allowed_roles })),
+  mcp: () => request<McpServer[]>("/mcp"),
   updateUser: (id: string, changes: Partial<Pick<AdminUser, "roles" | "is_active">>) =>
     request<AdminUser>(`/admin/users/${id}`, json("PATCH", changes)),
   requests: (status: "pending" | "decided") => request<AccessRequest[]>(`/admin/requests?status=${status}`),
@@ -123,6 +177,3 @@ export const api = {
     request<AccessRequest>(`/admin/requests/${id}/decision`, json("POST", { approve, note })),
   activity: (limit = 100) => request<Activity[]>(`/admin/activity?limit=${limit}`),
 };
-
-// Roles anyone can request. Kept here because /admin/roles is admin-only.
-export const CONTENT_ROLES = ["engineer", "hr", "manager", "security", "sales"];

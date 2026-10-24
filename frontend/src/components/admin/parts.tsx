@@ -3,7 +3,10 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Icon, type IconName } from "@/components/icons";
 
-export const rolesText = (roles: string[]) => (roles.length ? roles.join(", ") : "Handbook only");
+// "all" marks content everyone can read; an empty list means "nobody but admins" for sources
+// and "handbook only" for people.
+export const rolesText = (roles: string[], empty = "Handbook only") =>
+  roles.length ? roles.map((r) => (r === "all" ? "everyone" : r)).join(", ") : empty;
 
 // On/off switch. The parent decides what happens; the switch itself never flips on its own.
 export function Switch({ on, disabled, label, onToggle }: { on: boolean; disabled?: boolean; label: string; onToggle: () => void }) {
@@ -47,11 +50,12 @@ export function ErrorNote({ message }: { message: string }) {
 
 // Multi-select roles dropdown. Picking a role doesn't change anything by itself:
 // it calls onPick, and the page asks for confirmation before saving.
-export function RolesDropdown({ value, roles, disabled, allRoles, onPick }: {
+export function RolesDropdown({ value, roles, disabled, allRoles, emptyLabel, onPick }: {
   value: string[];
   roles: string[];
   disabled?: boolean;
   allRoles?: boolean;
+  emptyLabel?: string;
   onPick: (role: string) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -75,7 +79,7 @@ export function RolesDropdown({ value, roles, disabled, allRoles, onPick }: {
     <div ref={box} className="relative w-full max-w-[15rem]">
       <button type="button" disabled={disabled} onClick={() => setOpen(!open)} aria-haspopup="listbox" aria-expanded={open}
         className="flex w-full items-center justify-between gap-2 rounded-lg border border-border bg-surface px-3 py-1.5 text-left text-sm transition hover:border-brand/60 disabled:opacity-60">
-        <span className={`truncate ${value.length ? "" : "text-muted"}`}>{rolesText(value)}</span>
+        <span className={`truncate ${value.length ? "" : "text-muted"}`}>{rolesText(value, emptyLabel)}</span>
         <Icon name="chevron" className={`h-4 w-4 shrink-0 text-muted transition ${open ? "-rotate-90" : "rotate-90"}`} />
       </button>
       {open && (
@@ -90,7 +94,7 @@ export function RolesDropdown({ value, roles, disabled, allRoles, onPick }: {
                   <span className={`flex h-4 w-4 items-center justify-center rounded border ${on ? "border-brand bg-brand text-white" : "border-border"}`}>
                     {on && <Icon name="check" className="h-3 w-3" strokeWidth={3} />}
                   </span>
-                  {role}
+                  {role === "all" ? "everyone" : role}
                 </button>
               </li>
             );

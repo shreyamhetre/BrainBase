@@ -17,8 +17,7 @@ JWT_SECRET = os.getenv("JWT_SECRET", "")
 JWT_EXPIRE_HOURS = int(os.getenv("JWT_EXPIRE_HOURS", "24"))
 ALLOWED_EMAIL_DOMAIN = os.getenv("ALLOWED_EMAIL_DOMAIN", "gitmore.com").lower()  # company accounts only
 
-# Roles a user can hold for content; 'all' content is readable by everyone.
-CONTENT_ROLES = ("engineer", "hr", "manager", "security", "sales")
+SECRETS_KEY = os.getenv("SECRETS_KEY", "")  # encrypts connector and MCP tokens in the database
 
 DATA_DIR = PROJECT_ROOT / "data"
 MIGRATIONS_DIR = PROJECT_ROOT / "db" / "migrations"

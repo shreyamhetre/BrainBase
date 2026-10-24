@@ -5,7 +5,7 @@ import { EmptyState, Pill } from "@/components/admin/parts";
 import { PageHeader } from "@/components/app-shell";
 import { Avatar } from "@/components/avatar";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { api, CONTENT_ROLES, type MyRequest, type User } from "@/lib/api";
+import { api, type MyRequest, type Role, type User } from "@/lib/api";
 import { fullDate, timeAgo } from "@/lib/format";
 import { useUser } from "@/lib/user-context";
 
@@ -60,6 +60,7 @@ function Profile({ user, setUser }: { user: User; setUser: (user: User) => void 
   const [passwordMsg, setPasswordMsg] = useState({ ok: "", error: "" });
 
   const [requests, setRequests] = useState<MyRequest[]>([]);
+  const [roles, setRoles] = useState<Role[]>([]);
   const [role, setRole] = useState("");
   const [reason, setReason] = useState("");
   const [requestMsg, setRequestMsg] = useState({ ok: "", error: "" });
@@ -67,7 +68,9 @@ function Profile({ user, setUser }: { user: User; setUser: (user: User) => void 
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!user.is_admin) api.myRequests().then(setRequests).catch(() => {});
+    if (user.is_admin) return;
+    api.myRequests().then(setRequests).catch(() => {});
+    api.roles().then(setRoles).catch(() => {});
   }, [user.is_admin]);
 
   useEffect(() => {
@@ -75,7 +78,7 @@ function Profile({ user, setUser }: { user: User; setUser: (user: User) => void 
   }, []);
 
   const pendingRoles = new Set(requests.filter((r) => r.status === "pending").map((r) => r.role));
-  const requestable = CONTENT_ROLES.filter((r) => !user.roles.includes(r) && !pendingRoles.has(r));
+  const requestable = roles.filter((r) => !user.roles.includes(r.name) && !pendingRoles.has(r.name));
 
   async function saveProfile(e: FormEvent) {
     e.preventDefault();
@@ -203,7 +206,7 @@ function Profile({ user, setUser }: { user: User; setUser: (user: User) => void 
                   <Field label="Role">
                     <select className={input} value={role} onChange={(e) => setRole(e.target.value)} required>
                       <option value="" disabled>Choose a role</option>
-                      {requestable.map((r) => <option key={r} value={r}>{r}</option>)}
+                      {requestable.map((r) => <option key={r.name} value={r.name}>{r.name}{r.description ? ` · ${r.description}` : ""}</option>)}
                     </select>
                   </Field>
                   <Field label="Why do you need it?" hint="The admin sees this when deciding.">

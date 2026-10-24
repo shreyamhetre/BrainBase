@@ -12,13 +12,20 @@ const KINDS = {
   "request.": "Access requests",
   "profile.": "Profile changes",
   "password.": "Password changes",
+  "role.": "Roles",
+  "connector.": "Connectors",
+  "access.": "Source access",
 } as const;
 
 const b = (text: string | null) => <strong className="font-medium text-foreground">{text ?? "someone"}</strong>;
 
 // One plain sentence per log entry.
 function describe(a: Activity): ReactNode {
-  const d = a.details as { before?: string[]; after?: string[]; value?: boolean; role?: string; note?: string | null };
+  const d = a.details as {
+    before?: string[]; after?: string[]; value?: boolean; role?: string; note?: string | null;
+    name?: string; kind?: string; source?: string; changed?: string[];
+  };
+  const list = (roles?: string[]) => (roles?.length ? roles.join(", ") : "admins only");
   const self = a.actor === a.target;
   switch (a.action) {
     case "user.roles": {
@@ -52,6 +59,18 @@ function describe(a: Activity): ReactNode {
       return self ? <>{b(a.actor)} updated their profile</> : <>{b(a.actor)} updated {b(a.target)}&apos;s profile</>;
     case "password.changed":
       return <>{b(a.actor)} changed their password</>;
+    case "role.added":
+      return <>{b(a.actor)} added the {d.role} role</>;
+    case "role.removed":
+      return <>{b(a.actor)} removed the {d.role} role</>;
+    case "connector.added":
+      return <>{b(a.actor ?? "Setup script")} connected {b(d.name ?? "")}</>;
+    case "connector.removed":
+      return <>{b(a.actor)} removed the {b(d.name ?? "")} connector</>;
+    case "connector.updated":
+      return <>{b(a.actor)} changed {(d.changed ?? []).join(", ").replaceAll("_", " ")} on {b(d.name ?? "")}</>;
+    case "access.changed":
+      return <>{b(a.actor)} set who can read {b(d.source ?? "")}: {list(d.before)} → {list(d.after)}</>;
     default:
       return <>{b(a.actor)} · {a.action}</>;
   }
@@ -62,6 +81,9 @@ const DOT: Record<string, string> = {
   "request.denied": "bg-red-500",
   "user.active": "bg-amber-500",
   "user.roles": "bg-brand",
+  "access.changed": "bg-brand",
+  "connector.added": "bg-emerald-500",
+  "connector.removed": "bg-red-500",
 };
 
 export function ActivityTab({ items }: { items: Activity[] }) {

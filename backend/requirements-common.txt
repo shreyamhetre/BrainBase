@@ -24,6 +24,9 @@ bcrypt>=4.2
 PyJWT>=2.9
 email-validator>=2.2
 
+# Connector and MCP tokens encrypted in the database (Fernet)
+cryptography>=44
+
 # Tracing (self-hosted Langfuse, docker-compose.langfuse.yml)
 langfuse>=3.0
 

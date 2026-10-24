@@ -262,6 +262,7 @@ ALLOWED_EMAIL_DOMAIN=gitmore.com
 ADMIN_EMAIL=you@gitmore.com
 ADMIN_PASSWORD=
 DEMO_USER_PASSWORD=            # shared password for the 20 demo people
+SECRETS_KEY=                   # encrypts tool tokens: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 ```
 
 `.env` is git-ignored. Changing `LLM_MODEL` or `LLM_BASE_URL` switches models without code changes. After the models download once, add `HF_HUB_OFFLINE=1` so they always load from the local cache.
@@ -294,9 +295,12 @@ All commands run from the project root.
 python -m app.db.migrate
 python -m app.ingestion.ingest_handbook
 python backend/scripts/seed_users.py
+python backend/scripts/seed_connectors.py   # optional: demo Slack + GitLab connectors
 ```
 
 This creates the admin and the 20 people in [data/synthetic/people.json](data/synthetic/people.json), with emails such as `priya.sharma@gitmore.com`. Sign-up and login only accept emails at `ALLOWED_EMAIL_DOMAIN`, checked in the backend.
+
+`seed_connectors.py` reads `SLACK_BOT_TOKEN`, `GITLAB_URL`, `GITLAB_TOKEN` and `GITLAB_GROUP` from `.env` once, stores the tokens encrypted in the database and maps each channel and project to roles from the synthetic data. You can also add connectors from the Connectors page instead.
 
 ### 5. Run GitMore
 
@@ -361,8 +365,8 @@ Permission, conflict and expertise questions are added as the synthetic sources 
 | 5 | Product docs and public issues | Skipped |
 | 6 | Login and role-based access; synthetic Slack, wiki and issues published | Done |
 | 7 | Next.js app: sidebar layout, chat, profile, settings, admin console with access requests and activity log | Done |
-| 8 | Settings foundation: connectors, access mapping and MCP tables, encrypted tokens | Next |
-| 9 | Connectors: GitLab and Slack sync, Slack events and GitLab webhooks, Connectors page | Planned |
+| 8 | Settings foundation: roles, connectors and access mapping managed in the app, encrypted tokens | Done |
+| 9 | Connectors: GitLab and Slack sync, Slack events and GitLab webhooks | Next |
 | 10 | Permission evaluation: questions asked as specific users, zero leaks | Planned |
 | 11 | Conversations: chat history, sidebar list, follow-up questions | Planned |
 | 12 | Router: knowledge, live lookup, action and clarify routes | Planned |
@@ -378,6 +382,9 @@ GitMore/
 │   │   ├── api/           FastAPI routes: ask, auth, account, admin
 │   │   ├── auth.py        JWT cookies, password hashing, role checks
 │   │   ├── audit.py       activity log
+│   │   ├── vault.py       encrypts tool tokens (key in .env)
+│   │   ├── roles.py       roles from the database
+│   │   ├── connectors/    Slack and GitLab clients
 │   │   ├── ingestion/     selection rules, cleaning, chunking
 │   │   ├── retrieval/     hybrid search, fusion, rerank, permission filter
 │   │   ├── generation/    prompt, LLM call, citations
