@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="280" viewBox="0 0 1000 280" role="img" aria-labelledby="t d">
+  <title id="t">Brainbase powers GitMore</title><desc id="d">Brainbase is the configurable foundation. GitMore is a reference implementation connecting GitLab, Slack and company documentation.</desc>
+  <defs>
+    <linearGradient id="orange" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffad62"/><stop offset="1" stop-color="#fc6d26"/></linearGradient>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#fc6d26"/></marker>
+  </defs>
+  <rect x="2" y="2" width="996" height="276" rx="20" fill="#111827" stroke="#344154"/>
+  <rect x="32" y="74" width="250" height="132" rx="16" fill="#1d293b" stroke="#fc6d26" stroke-width="1.5"/>
+  <circle cx="69" cy="111" r="18" fill="url(#orange)"/>
+  <path d="M59 111 L69 101 L79 111 L69 121 Z" fill="#fff"/>
+  <text x="97" y="115" fill="#fff" font-family="Arial,sans-serif" font-size="24" font-weight="700">Brainbase</text>
+  <text x="54" y="151" fill="#d4dceb" font-family="Arial,sans-serif" font-size="14">Configurable foundation</text>
+  <text x="54" y="174" fill="#9aa9be" font-family="Arial,sans-serif" font-size="12">RAG · Access · Routing · MCP</text>
+  <path d="M282 140 H365" stroke="#fc6d26" stroke-width="2.5" marker-end="url(#arrow)"><animate attributeName="stroke-dasharray" values="2 8;10 5;2 8" dur="2s" repeatCount="indefinite"/></path>
+  <rect x="375" y="74" width="250" height="132" rx="16" fill="#1d293b" stroke="#65758b"/>
+  <text x="405" y="119" fill="#fff" font-family="Arial,sans-serif" font-size="28" font-weight="700">GitMore</text>
+  <text x="405" y="147" fill="#d4dceb" font-family="Arial,sans-serif" font-size="14">Reference implementation</text>
+  <text x="405" y="173" fill="#9aa9be" font-family="Arial,sans-serif" font-size="12">Company brain for GitLab</text>
+  <path d="M625 140 H690" stroke="#fc6d26" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <g font-family="Arial,sans-serif">
+    <rect x="703" y="47" width="250" height="49" rx="10" fill="#252f40" stroke="#475569"/>
+    <text x="828" y="77" text-anchor="middle" fill="#fff" font-size="16" font-weight="600">GitLab</text>
+    <rect x="703" y="116" width="250" height="49" rx="10" fill="#252f40" stroke="#475569"/>
+    <text x="828" y="146" text-anchor="middle" fill="#fff" font-size="16" font-weight="600">Slack</text>
+    <rect x="703" y="185" width="250" height="49" rx="10" fill="#252f40" stroke="#475569"/>
+    <text x="828" y="215" text-anchor="middle" fill="#fff" font-size="16" font-weight="600">Company documentation</text>
+  </g>
+</svg>
