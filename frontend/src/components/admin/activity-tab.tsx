@@ -16,6 +16,7 @@ const KINDS = {
   "connector.": "Connectors",
   "access.": "Source access",
   "mcp.": "MCP tools",
+  "action.": "Actions",
 } as const;
 
 const b = (text: string | null) => <strong className="font-medium text-foreground">{text ?? "someone"}</strong>;
@@ -24,7 +25,7 @@ const b = (text: string | null) => <strong className="font-medium text-foregroun
 function describe(a: Activity): ReactNode {
   const d = a.details as {
     before?: string[]; after?: string[]; value?: boolean; role?: string; note?: string | null;
-    name?: string; kind?: string; source?: string; changed?: string[];
+    name?: string; kind?: string; source?: string; changed?: string[]; tool?: string; summary?: string; url?: string | null;
   };
   const list = (roles?: string[]) => (roles?.length ? roles.join(", ") : "admins only");
   const self = a.actor === a.target;
@@ -68,6 +69,10 @@ function describe(a: Activity): ReactNode {
       return <>{b(a.actor ?? "Setup script")} connected {b(d.name ?? "")}</>;
     case "connector.synced":
       return <>{b(a.actor)} started a sync of {b(d.name ?? "")}</>;
+    case "action.done":
+      return <>{b(a.actor)} ran {d.tool}: {d.summary}{d.url && <> · <a href={String(d.url)} target="_blank" rel="noreferrer" className="text-brand-strong hover:underline">open</a></>}</>;
+    case "action.failed":
+      return <>{b(a.actor)} tried {d.tool}, which failed: {d.summary}</>;
     case "mcp.added":
       return <>{b(a.actor)} connected the {b(d.name ?? "")} MCP server</>;
     case "mcp.removed":
@@ -98,6 +103,8 @@ const DOT: Record<string, string> = {
   "user.roles": "bg-brand",
   "access.changed": "bg-brand",
   "connector.added": "bg-emerald-500",
+  "action.done": "bg-emerald-500",
+  "action.failed": "bg-red-500",
   "connector.removed": "bg-red-500",
 };
 

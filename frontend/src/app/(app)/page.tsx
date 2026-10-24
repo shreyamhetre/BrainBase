@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { ActionCard } from "@/components/action-card";
 import { AnswerText } from "@/components/answer-text";
 import { api, ApiError, type AskResponse, type Source } from "@/lib/api";
 import { useUser } from "@/lib/user-context";
@@ -155,7 +156,9 @@ export default function ChatPage() {
                 {turn.error && <p className="text-sm text-red-600 dark:text-red-400">{turn.error}</p>}
                 {turn.response && (
                   <>
-                    <AnswerText text={turn.response.answer} onCite={(n) => cite(turn.id, n)} />
+                    {turn.response.kind === "action" && turn.response.action
+                      ? <ActionCard action={turn.response.action} />
+                      : <AnswerText text={turn.response.answer} onCite={(n) => cite(turn.id, n)} />}
                     {turn.response.sources.length > 0 && (
                       <div className="mt-4 border-t border-border pt-4">
                         <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">Sources</div>

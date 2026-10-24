@@ -11,7 +11,7 @@ import time
 from langfuse import get_client
 
 from app.embedding import get_model
-from app.graph import ask
+from app.graph import ask_as
 from app.retrieval.rank import get_reranker
 
 
@@ -27,7 +27,7 @@ def main() -> None:
     total_in = total_out = 0
     for question in args.questions:
         start = time.perf_counter()
-        answer = ask(question, [args.role])
+        answer = ask_as(question, [args.role])
         seconds = time.perf_counter() - start
         total_in += answer.prompt_tokens
         total_out += answer.completion_tokens

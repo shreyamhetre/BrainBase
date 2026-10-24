@@ -25,7 +25,7 @@ from langfuse import get_client as get_langfuse
 from app.config import LLM_MODEL, PROJECT_ROOT
 from app.embedding import get_model
 from app.generation.answer import NOT_FOUND, format_sources, get_client
-from app.graph import ask
+from app.graph import ask_as
 from app.retrieval.rank import get_reranker
 
 QUESTIONS_FILE = PROJECT_ROOT / "eval" / "questions.md"
@@ -90,7 +90,7 @@ def judge(question: Question, answer) -> dict:
 
 def evaluate(question: Question) -> dict:
     start = time.perf_counter()
-    answer = ask(question.text, ["all"])
+    answer = ask_as(question.text, ["all"])
     seconds = time.perf_counter() - start
 
     pages = [page_path(c.url) for c in answer.sources]

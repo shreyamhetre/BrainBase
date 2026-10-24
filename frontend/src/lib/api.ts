@@ -150,9 +150,24 @@ export type Source = {
   status: string | null;
 };
 
+export type ProposedAction = {
+  id: string;
+  tool: string;
+  server: string;
+  summary: string;
+  arguments: Record<string, unknown>;
+  status: "proposed" | "done" | "failed" | "cancelled";
+  target?: string; // where it lands, e.g. "engineering · issue #7"
+  signature?: string; // the line GitMore adds to the text
+};
+
+export type ActionResult = ProposedAction & { result_text: string | null; result_url: string | null; created_at: string };
+
 export type AskResponse = {
-  answer: string;
+  kind: "answer" | "action" | "clarify";
+  answer: string; // the answer, the action summary, or the clarifying question
   sources: Source[];
+  action: ProposedAction | null;
   prompt_tokens: number;
   completion_tokens: number;
   seconds: number;
@@ -192,6 +207,9 @@ export const api = {
   logout: () => request<void>("/auth/logout", { method: "POST" }),
   me: () => request<User>("/auth/me"),
   ask: (question: string) => request<AskResponse>("/ask", json("POST", { question })),
+  confirmAction: (id: string, args: Record<string, unknown>) =>
+    request<ActionResult>(`/actions/${id}/confirm`, json("POST", { arguments: args })),
+  cancelAction: (id: string) => request<ActionResult>(`/actions/${id}/cancel`, { method: "POST" }),
 
   updateProfile: (changes: { name: string; title: string | null; team: string | null }) =>
     request<User>("/account/profile", json("PATCH", changes)),

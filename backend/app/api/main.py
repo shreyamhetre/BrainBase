@@ -14,8 +14,8 @@ from fastapi import Depends, FastAPI
 from langfuse import get_client
 from pydantic import BaseModel, Field
 
-from app.api import account_routes, admin_routes, auth_routes, mcp_routes, settings_routes
-from app.auth import User, current_user, search_roles
+from app.api import account_routes, actions_routes, admin_routes, auth_routes, mcp_routes, settings_routes
+from app.auth import User, current_user
 from app.config import SYNC_SCHEDULER
 from app.connectors.sync import Scheduler
 from app.embedding import get_model
@@ -52,6 +52,7 @@ app.include_router(admin_routes.router)
 app.include_router(account_routes.router)
 app.include_router(settings_routes.router)
 app.include_router(mcp_routes.router)
+app.include_router(actions_routes.router)
 
 
 class AskRequest(BaseModel):
@@ -69,9 +70,22 @@ class Source(BaseModel):
     status: str | None
 
 
+class ProposedAction(BaseModel):
+    id: str
+    tool: str
+    server: str
+    summary: str
+    arguments: dict
+    status: str
+    target: str = ""        # where it lands, e.g. "engineering · issue #7"
+    signature: str = ""     # the line GitMore adds to the text
+
+
 class AskResponse(BaseModel):
-    answer: str
+    kind: str                       # answer, action, clarify
+    answer: str                     # the answer, the action summary, or the clarifying question
     sources: list[Source]
+    action: ProposedAction | None = None
     prompt_tokens: int
     completion_tokens: int
     seconds: float
@@ -84,15 +98,19 @@ def health() -> dict:
 
 @app.post("/ask", response_model=AskResponse)
 def ask_question(request: AskRequest, user: User = Depends(current_user)) -> AskResponse:
-    # A plain def (not async): FastAPI runs it in a worker thread, so the
-    # GPU and database work doesn't block the server.
-    # Roles come from the database for the logged-in user, never from the request.
+    """One chat message: the router answers it, proposes an action to confirm, or asks back.
+
+    A plain def (not async): FastAPI runs it in a worker thread, so the GPU and database work
+    doesn't block the server. Roles come from the database for the logged-in user, never the request.
+    """
     start = time.perf_counter()
-    answer = ask(request.question, search_roles(user), user.email)
+    reply = ask(request.question, user)
     seconds = round(time.perf_counter() - start, 2)
-    log_question(user.id, request.question, answer, seconds)
+    log_question(user.id, request.question, reply, seconds)
+    cited = set(reply.answer.cited) if reply.answer else set()
     return AskResponse(
-        answer=answer.text,
+        kind=reply.kind,
+        answer=reply.text,
         sources=[
             Source(
                 number=n,
@@ -100,13 +118,14 @@ def ask_question(request: AskRequest, user: User = Depends(current_user)) -> Ask
                 title=c.title,
                 heading_path=c.heading_path,
                 link=c.link,
-                cited=n in answer.cited,
+                cited=n in cited,
                 updated_at=c.updated_at.date().isoformat() if c.updated_at else None,
                 status=c.status,
             )
-            for n, c in enumerate(answer.sources, 1)
+            for n, c in enumerate(reply.sources, 1)
         ],
-        prompt_tokens=answer.prompt_tokens,
-        completion_tokens=answer.completion_tokens,
+        action=ProposedAction(**reply.action) if reply.action else None,
+        prompt_tokens=reply.prompt_tokens,
+        completion_tokens=reply.completion_tokens,
         seconds=seconds,
     )
