@@ -109,13 +109,32 @@ LangGraph provides the orchestration layer for multi-step workflows. The intende
 
 ## Demo
 
-The visuals below illustrate the product flow. Replace them with real screenshots or a short screen recording as you polish the UI.
+Screenshots from GitMore running locally with the demo data.
 
-<div align="center">
+**Cited answers across sources.** An engineer asks about PTO notice. The answer follows the handbook and points out that an older Slack thread said something different.
 
-<img src="assets/brainbase-demo.svg" alt="Illustrated GitMore demo showing chat, source citations, connector health and role-based access" width="100%">
+<img src="assets/screenshots/chat-cited-answer.png" alt="GitMore chat: an answer about PTO notice citing two handbook pages and naming an older, conflicting Slack thread, with source cards below" width="100%">
 
-</div>
+**Permissions before generation.** The same question about draft salary bands, asked by an engineer and by someone in HR. Restricted content never reaches the model for the engineer.
+
+<table>
+  <tr>
+    <th width="50%">Engineer</th>
+    <th width="50%">HR</th>
+  </tr>
+  <tr>
+    <td valign="top"><img src="assets/screenshots/permissions-engineer.png" alt="An engineer asks for the 2027 salary bands and gets: I couldn't find this in the sources you can access" width="100%"></td>
+    <td valign="top"><img src="assets/screenshots/permissions-hr.png" alt="Someone in HR asks the same question and gets the draft bands, cited from the HR-only wiki page and the private HR Slack channel" width="100%"></td>
+  </tr>
+</table>
+
+**Connectors and access mapping.** Admins connect Slack and GitLab, sync on a schedule or on demand, and choose which roles can read each channel or project.
+
+<img src="assets/screenshots/connectors.png" alt="Connectors page: Slack and GitLab connectors with sync status, and a table mapping each Slack channel to the roles that can read it" width="100%">
+
+**Admin console.** People, roles, access requests and an activity log, with a confirmation before every change.
+
+<img src="assets/screenshots/admin-console.png" alt="Admin console: overview tiles, people per role, and the users table with role dropdowns and active switches" width="100%">
 
 ### Suggested walkthrough
 

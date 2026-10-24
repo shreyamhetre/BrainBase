@@ -1,28 +1,72 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="280" viewBox="0 0 1000 280" role="img" aria-labelledby="t d">
-  <title id="t">Brainbase powers GitMore</title><desc id="d">Brainbase is the configurable foundation. GitMore is a reference implementation connecting GitLab, Slack and company documentation.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="300" viewBox="0 0 1100 300" role="img" aria-labelledby="t d">
+  <title id="t">Brainbase powers GitMore</title>
+  <desc id="d">GitLab handbook, GitLab issues and wiki, and Slack threads feed Brainbase, the configurable foundation with connectors, access mapping, hybrid retrieval and routing. GitMore is the reference app built on it.</desc>
   <defs>
-    <linearGradient id="orange" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffad62"/><stop offset="1" stop-color="#fc6d26"/></linearGradient>
-    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#fc6d26"/></marker>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 Z" fill="#fc6d26"/>
+    </marker>
   </defs>
-  <rect x="2" y="2" width="996" height="276" rx="20" fill="#111827" stroke="#344154"/>
-  <rect x="32" y="74" width="250" height="132" rx="16" fill="#1d293b" stroke="#fc6d26" stroke-width="1.5"/>
-  <circle cx="69" cy="111" r="18" fill="url(#orange)"/>
-  <path d="M59 111 L69 101 L79 111 L69 121 Z" fill="#fff"/>
-  <text x="97" y="115" fill="#fff" font-family="Arial,sans-serif" font-size="24" font-weight="700">Brainbase</text>
-  <text x="54" y="151" fill="#d4dceb" font-family="Arial,sans-serif" font-size="14">Configurable foundation</text>
-  <text x="54" y="174" fill="#9aa9be" font-family="Arial,sans-serif" font-size="12">RAG · Access · Routing · MCP</text>
-  <path d="M282 140 H365" stroke="#fc6d26" stroke-width="2.5" marker-end="url(#arrow)"><animate attributeName="stroke-dasharray" values="2 8;10 5;2 8" dur="2s" repeatCount="indefinite"/></path>
-  <rect x="375" y="74" width="250" height="132" rx="16" fill="#1d293b" stroke="#65758b"/>
-  <text x="405" y="119" fill="#fff" font-family="Arial,sans-serif" font-size="28" font-weight="700">GitMore</text>
-  <text x="405" y="147" fill="#d4dceb" font-family="Arial,sans-serif" font-size="14">Reference implementation</text>
-  <text x="405" y="173" fill="#9aa9be" font-family="Arial,sans-serif" font-size="12">Company brain for GitLab</text>
-  <path d="M625 140 H690" stroke="#fc6d26" stroke-width="2.5" marker-end="url(#arrow)"/>
-  <g font-family="Arial,sans-serif">
-    <rect x="703" y="47" width="250" height="49" rx="10" fill="#252f40" stroke="#475569"/>
-    <text x="828" y="77" text-anchor="middle" fill="#fff" font-size="16" font-weight="600">GitLab</text>
-    <rect x="703" y="116" width="250" height="49" rx="10" fill="#252f40" stroke="#475569"/>
-    <text x="828" y="146" text-anchor="middle" fill="#fff" font-size="16" font-weight="600">Slack</text>
-    <rect x="703" y="185" width="250" height="49" rx="10" fill="#252f40" stroke="#475569"/>
-    <text x="828" y="215" text-anchor="middle" fill="#fff" font-size="16" font-weight="600">Company documentation</text>
+  <rect x="1" y="1" width="1098" height="298" rx="20" fill="#111827" stroke="#2b3a52"/>
+
+  <g font-family="Segoe UI, Helvetica Neue, Arial, sans-serif">
+    <!-- Sources -->
+    <text x="36" y="44" fill="#ff995c" font-size="13" font-weight="700" letter-spacing="2">COMPANY TOOLS</text>
+    <g fill="#1d293b" stroke="#3b4a61">
+      <rect x="36" y="64" width="224" height="56" rx="12"/>
+      <rect x="36" y="132" width="224" height="56" rx="12"/>
+      <rect x="36" y="200" width="224" height="56" rx="12"/>
+    </g>
+    <g font-size="15" font-weight="600" fill="#ffffff">
+      <text x="56" y="89">GitLab handbook</text>
+      <text x="56" y="157">GitLab issues and wiki</text>
+      <text x="56" y="225">Slack threads</text>
+    </g>
+    <g font-size="12" fill="#98a8bf">
+      <text x="56" y="108">Public policies and processes</text>
+      <text x="56" y="176">Projects, incl. confidential</text>
+      <text x="56" y="244">Public and private channels</text>
+    </g>
+    <g stroke="#fc6d26" stroke-width="2" fill="none" marker-end="url(#arrow)">
+      <path d="M260 92 H330"/>
+      <path d="M260 160 H330"/>
+      <path d="M260 228 H330"/>
+    </g>
+
+    <!-- Brainbase -->
+    <rect x="340" y="56" width="432" height="208" rx="16" fill="#1a2436" stroke="#fc6d26" stroke-width="1.5"/>
+    <text x="364" y="92" fill="#ffffff" font-size="24" font-weight="700"><tspan>Brain</tspan><tspan fill="#ff8c43">base</tspan></text>
+    <text x="364" y="114" fill="#98a8bf" font-size="13">Configurable foundation, managed in the app</text>
+    <g fill="#243049" stroke="#3b4a61">
+      <rect x="364" y="132" width="188" height="52" rx="10"/>
+      <rect x="564" y="132" width="188" height="52" rx="10"/>
+      <rect x="364" y="194" width="188" height="52" rx="10"/>
+      <rect x="564" y="194" width="188" height="52" rx="10"/>
+    </g>
+    <g font-size="14" font-weight="600" fill="#ffffff">
+      <text x="380" y="155">Connectors and sync</text>
+      <text x="580" y="155">Access mapping</text>
+      <text x="380" y="217">Hybrid retrieval</text>
+      <text x="580" y="217">Routing and MCP</text>
+    </g>
+    <g font-size="11.5" fill="#98a8bf">
+      <text x="380" y="173">Tokens encrypted at rest</text>
+      <text x="580" y="173">Roles per channel or project</text>
+      <text x="380" y="235">Vector + keyword, reranked</text>
+      <text x="580" y="235">Confirmed, audited actions</text>
+    </g>
+
+    <path d="M772 160 H842" stroke="#fc6d26" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+
+    <!-- GitMore -->
+    <text x="852" y="44" fill="#ff995c" font-size="13" font-weight="700" letter-spacing="2">REFERENCE APP</text>
+    <rect x="852" y="64" width="212" height="192" rx="16" fill="#1d293b" stroke="#3b4a61"/>
+    <text x="874" y="102" fill="#ffffff" font-size="24" font-weight="700"><tspan>Git</tspan><tspan fill="#ff8c43">More</tspan></text>
+    <text x="874" y="124" fill="#98a8bf" font-size="13">Company brain for GitLab</text>
+    <g font-size="13.5" fill="#d9e0ec">
+      <text x="874" y="162">Chat with cited answers</text>
+      <text x="874" y="188">Answers filtered by role</text>
+      <text x="874" y="214">Admin console</text>
+      <text x="874" y="240">Connectors and access</text>
+    </g>
   </g>
 </svg>

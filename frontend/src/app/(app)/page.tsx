@@ -46,7 +46,10 @@ function SourceCard({ source, turnId, highlighted }: { source: Source; turnId: n
         </span>
         <div className="min-w-0 flex-1">
           <div className="truncate font-medium">{crumbs[crumbs.length - 1]}</div>
-          <div className="truncate text-xs text-muted">{crumbs.slice(0, -1).join(" › ") || source.title}</div>
+          {/* Handbook: the page path. Slack threads and issues have no path; their title is already the heading. */}
+          {(crumbs.length > 1 || source.title !== crumbs[0]) && (
+            <div className="truncate text-xs text-muted">{crumbs.slice(0, -1).join(" › ") || source.title}</div>
+          )}
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px] text-muted">
             <span className="rounded bg-navy/10 px-1.5 py-0.5">{SOURCE_LABEL[source.source] ?? source.source}</span>
             {source.updated_at && <span>updated {source.updated_at}</span>}
