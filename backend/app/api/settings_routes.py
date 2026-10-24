@@ -1,4 +1,4 @@
-"""Settings managed in the app: roles, connectors, access mapping and MCP tools.
+"""Settings managed in the app: roles, connectors and access mapping (MCP tools: mcp_routes.py).
 
 Everyone logged in can see what is connected and what they can read or use.
 Only admins change anything. Tokens go in encrypted and never come back out.
@@ -355,39 +355,3 @@ def edit_access(access_id: UUID, body: AccessEdit, admin: User = Depends(admin_u
             record(conn, admin.id, "access.changed", source=before[0], before=sorted(before[1]), after=wanted)
     return AccessOut(**dict(zip(AccessOut.model_fields, row)))
 
-
-# ---------- MCP tools (read-only until step 13 connects servers) ----------
-
-class McpToolOut(BaseModel):
-    id: str
-    name: str
-    description: str
-    enabled: bool
-    allowed_roles: list[str]
-    you_can_use: bool
-
-
-class McpServerOut(BaseModel):
-    id: str
-    kind: str
-    name: str
-    enabled: bool
-    status: str
-    tools: list[McpToolOut]
-
-
-@router.get("/mcp", response_model=list[McpServerOut])
-def list_mcp(user: User = Depends(current_user)) -> list[McpServerOut]:
-    with connect() as conn:
-        servers = conn.execute("SELECT id::text, kind, name, enabled, status FROM mcp_servers ORDER BY created_at").fetchall()
-        tools = conn.execute("SELECT id::text, server_id::text, name, description, enabled, allowed_roles "
-                             "FROM mcp_tools ORDER BY name").fetchall()
-    mine = set(user.roles) | {"all"}
-    return [
-        McpServerOut(id=sid, kind=kind, name=name, enabled=enabled, status=st, tools=[
-            McpToolOut(id=tid, name=tname, description=desc, enabled=ton, allowed_roles=roles,
-                       you_can_use=enabled and ton and (user.is_admin or bool(mine & set(roles))))
-            for tid, server, tname, desc, ton, roles in tools if server == sid
-        ])
-        for sid, kind, name, enabled, st in servers
-    ]

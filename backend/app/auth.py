@@ -1,8 +1,9 @@
-"""Login: password hashing, JWT tokens and the FastAPI dependencies that protect routes.
+"""Login: password hashing, JWT tokens, server-side sessions and the dependencies that protect routes.
 
-The JWT only proves who you are (user id + expiry). Roles are read from the database on
-every request, so a role change by the admin takes effect immediately, not after the
-token expires.
+The JWT carries the user id, an expiry and a session id (jti). Every request checks that
+session is still open, so logging out or changing a password makes old tokens useless at
+once. Roles are read from the database on every request, so a role change by the admin
+takes effect immediately.
 """
 
 from dataclasses import dataclass
@@ -43,12 +44,41 @@ def verify_password(password: str, password_hash: str) -> bool:
     return bcrypt.checkpw(password.encode("utf-8"), password_hash.encode("utf-8"))
 
 
-def create_token(user_id: str) -> str:
+def create_token(user_id: str, user_agent: str | None = None) -> str:
+    """Open a session and return a JWT that points at it."""
     if len(JWT_SECRET) < 32:  # a short or placeholder secret lets anyone forge login tokens
         raise RuntimeError("JWT_SECRET in .env must be a random string of at least 32 characters")
     now = datetime.now(timezone.utc)
-    claims = {"sub": user_id, "iat": now, "exp": now + timedelta(hours=JWT_EXPIRE_HOURS)}
+    expires = now + timedelta(hours=JWT_EXPIRE_HOURS)
+    with connect() as conn:
+        session_id = conn.execute(
+            "INSERT INTO sessions (user_id, expires_at, user_agent) VALUES (%s, %s, %s) RETURNING id::text",
+            (user_id, expires, (user_agent or "")[:300]),
+        ).fetchone()[0]
+    claims = {"sub": user_id, "jti": session_id, "iat": now, "exp": expires}
     return jwt.encode(claims, JWT_SECRET, algorithm=ALGORITHM)
+
+
+def close_session(session_id: str) -> None:
+    with connect() as conn:
+        conn.execute("UPDATE sessions SET revoked_at = now() WHERE id = %s AND revoked_at IS NULL", (session_id,))
+
+
+def close_user_sessions(user_id: str, keep: str | None = None) -> int:
+    """Log a user out everywhere, optionally keeping the current session."""
+    with connect() as conn:
+        return conn.execute(
+            "UPDATE sessions SET revoked_at = now() WHERE user_id = %s AND revoked_at IS NULL AND id::text <> %s",
+            (user_id, keep or ""),
+        ).rowcount
+
+
+def session_from(token: str) -> str | None:
+    """The session id inside a valid token, or None."""
+    try:
+        return jwt.decode(token, JWT_SECRET, algorithms=[ALGORITHM]).get("jti")
+    except jwt.PyJWTError:
+        return None
 
 
 def get_user(user_id: str) -> User | None:
@@ -85,9 +115,17 @@ def current_user(request: Request) -> User:
         claims = jwt.decode(token, JWT_SECRET, algorithms=[ALGORITHM])
     except jwt.PyJWTError:
         raise unauthorized from None
+    with connect() as conn:
+        open_session = conn.execute(
+            "SELECT 1 FROM sessions WHERE id::text = %s AND user_id::text = %s AND revoked_at IS NULL AND expires_at > now()",
+            (claims.get("jti") or "", claims["sub"]),
+        ).fetchone()
+    if not open_session:  # logged out, password changed, or a token from before sessions existed
+        raise unauthorized
     user = get_user(claims["sub"])
     if not user:
         raise unauthorized
+    request.state.session_id = claims["jti"]
     return user
 
 

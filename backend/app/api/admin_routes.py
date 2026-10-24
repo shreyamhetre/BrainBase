@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
 from app.audit import record
-from app.auth import User, admin_user
+from app.auth import User, admin_user, close_user_sessions
 from app.db.connection import connect
 from app.roles import content_roles
 
@@ -135,6 +135,8 @@ def update_user(user_id: UUID, body: UserUpdate, admin: User = Depends(admin_use
             record(conn, admin.id, "user.admin", user_id, value=updates["is_admin"])
         if "is_active" in updates and updates["is_active"] != before[2]:
             record(conn, admin.id, "user.active", user_id, value=updates["is_active"])
+    if updates.get("is_active") is False:
+        close_user_sessions(user_id)  # a deactivated person is logged out everywhere at once
     return _user_out(row)
 
 

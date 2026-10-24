@@ -95,13 +95,27 @@ export type SourceAccess = {
   discovered_at: string;
 };
 
+export type McpTool = {
+  id: string;
+  name: string;
+  description: string;
+  read_only: boolean;
+  enabled: boolean;
+  allowed_roles: string[];
+  you_can_use: boolean;
+};
+
 export type McpServer = {
   id: string;
-  kind: string;
+  kind: "gitlab" | "slack" | "custom";
   name: string;
+  url: string;
   enabled: boolean;
-  status: string;
-  tools: { id: string; name: string; description: string; enabled: boolean; allowed_roles: string[]; you_can_use: boolean }[];
+  status: "connected" | "error" | "not_connected";
+  last_error: string | null; // admins only
+  last_checked_at: string | null;
+  token_hint: string | null; // admins only
+  tools: McpTool[];
 };
 
 export type UsageTotals = { questions: number; tokens: number; cost_usd: number; avg_seconds: number; not_found: number };
@@ -205,6 +219,14 @@ export const api = {
   access: (connectorId: string) => request<SourceAccess[]>(`/admin/connectors/${connectorId}/access`),
   editAccess: (id: string, allowed_roles: string[]) => request<SourceAccess>(`/admin/access/${id}`, json("PATCH", { allowed_roles })),
   mcp: () => request<McpServer[]>("/mcp"),
+  addMcpServer: (body: { kind: string; name: string; url: string; token: string }) =>
+    request<McpServer>("/admin/mcp", json("POST", body)),
+  refreshMcpServer: (id: string) => request<McpServer>(`/admin/mcp/${id}/refresh`, { method: "POST" }),
+  editMcpServer: (id: string, changes: { enabled?: boolean; token?: string }) =>
+    request<McpServer>(`/admin/mcp/${id}`, json("PATCH", changes)),
+  removeMcpServer: (id: string) => request<void>(`/admin/mcp/${id}`, { method: "DELETE" }),
+  editMcpTool: (id: string, changes: { enabled?: boolean; allowed_roles?: string[] }) =>
+    request<McpServer>(`/admin/mcp/tools/${id}`, json("PATCH", changes)),
   updateUser: (id: string, changes: Partial<Pick<AdminUser, "roles" | "is_active">>) =>
     request<AdminUser>(`/admin/users/${id}`, json("PATCH", changes)),
   requests: (status: "pending" | "decided") => request<AccessRequest[]>(`/admin/requests?status=${status}`),

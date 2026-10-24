@@ -24,6 +24,9 @@ bcrypt>=4.2
 PyJWT>=2.9
 email-validator>=2.2
 
+# MCP client for the official GitLab and Slack MCP servers
+mcp>=2.3
+
 # Connector and MCP tokens encrypted in the database (Fernet)
 cryptography>=44
 

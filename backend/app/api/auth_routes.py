@@ -4,12 +4,12 @@ New accounts get no content roles: they can read everything marked 'all' (the ha
 Only an admin can grant roles, in the admin console.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from psycopg.errors import UniqueViolation
 from pydantic import BaseModel, EmailStr, Field
 
-from app.auth import (COOKIE_NAME, USER_COLUMNS, User, create_token, current_user,
-                      hash_password, verify_password)
+from app.auth import (COOKIE_NAME, USER_COLUMNS, User, _token_from, close_session, create_token,
+                      current_user, hash_password, session_from, verify_password)
 from app.config import ALLOWED_EMAIL_DOMAIN, JWT_EXPIRE_HOURS
 from app.db.connection import connect
 
@@ -51,16 +51,17 @@ class TokenOut(BaseModel):
     user: UserOut
 
 
-def _issue(response: Response, user: User) -> TokenOut:
-    token = create_token(user.id)
-    # httpOnly: page scripts can't read the token, which protects it from XSS
-    response.set_cookie(COOKIE_NAME, token, httponly=True, samesite="lax",
+def _issue(request: Request, response: Response, user: User) -> TokenOut:
+    token = create_token(user.id, request.headers.get("user-agent"))
+    # httpOnly: page scripts can't read the token, which protects it from XSS.
+    # secure: sent over HTTPS only, whenever the site is served over HTTPS.
+    response.set_cookie(COOKIE_NAME, token, httponly=True, samesite="lax", secure=request.url.scheme == "https",
                         max_age=JWT_EXPIRE_HOURS * 3600, path="/")
     return TokenOut(access_token=token, user=UserOut(**user.__dict__))
 
 
 @router.post("/signup", response_model=TokenOut, status_code=status.HTTP_201_CREATED)
-def signup(body: SignupRequest, response: Response) -> TokenOut:
+def signup(body: SignupRequest, request: Request, response: Response) -> TokenOut:
     email = require_company_email(body.email)
     try:
         with connect() as conn:
@@ -71,11 +72,11 @@ def signup(body: SignupRequest, response: Response) -> TokenOut:
             ).fetchone()
     except UniqueViolation:
         raise HTTPException(status.HTTP_409_CONFLICT, "An account with this email already exists") from None
-    return _issue(response, User(*row))
+    return _issue(request, response, User(*row))
 
 
 @router.post("/login", response_model=TokenOut)
-def login(body: LoginRequest, response: Response) -> TokenOut:
+def login(body: LoginRequest, request: Request, response: Response) -> TokenOut:
     email = require_company_email(body.email)
     with connect() as conn:
         row = conn.execute(
@@ -86,11 +87,16 @@ def login(body: LoginRequest, response: Response) -> TokenOut:
         if not row or not verify_password(body.password, row[-1]):
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Wrong email or password")
         conn.execute("UPDATE users SET last_login_at = now() WHERE id = %s", (row[0],))
-    return _issue(response, User(*row[:-1]))
+    return _issue(request, response, User(*row[:-1]))
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
-def logout(response: Response) -> None:
+def logout(request: Request, response: Response) -> None:
+    """Close the session on the server, so this token stops working even if it was copied, and clear the cookie."""
+    token = _token_from(request)
+    session_id = session_from(token) if token else None
+    if session_id:
+        close_session(session_id)
     response.delete_cookie(COOKIE_NAME, path="/")
 
 

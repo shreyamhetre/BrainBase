@@ -6,13 +6,13 @@ Email is the login and stays a company address, so only an admin changes it.
 from datetime import datetime
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from psycopg.errors import UniqueViolation
 from pydantic import BaseModel, Field
 
 from app.api.auth_routes import UserOut
 from app.audit import record
-from app.auth import User, current_user, get_user, hash_password, verify_password
+from app.auth import User, close_user_sessions, current_user, get_user, hash_password, verify_password
 from app.db.connection import connect
 from app.roles import content_roles
 
@@ -61,13 +61,14 @@ def update_profile(body: ProfileUpdate, user: User = Depends(current_user)) -> U
 
 
 @router.post("/password", status_code=status.HTTP_204_NO_CONTENT)
-def change_password(body: PasswordChange, user: User = Depends(current_user)) -> None:
+def change_password(body: PasswordChange, request: Request, user: User = Depends(current_user)) -> None:
     with connect() as conn:
         current_hash = conn.execute("SELECT password_hash FROM users WHERE id = %s", (user.id,)).fetchone()[0]
         if not verify_password(body.current_password, current_hash):
             raise HTTPException(status.HTTP_400_BAD_REQUEST, "Your current password is wrong")
         conn.execute("UPDATE users SET password_hash = %s WHERE id = %s", (hash_password(body.new_password), user.id))
         record(conn, user.id, "password.changed", user.id)
+    close_user_sessions(user.id, keep=request.state.session_id)  # other devices must log in again
 
 
 MY_REQUEST_COLUMNS = "id::text, role, reason, status, note, decided_at, created_at"

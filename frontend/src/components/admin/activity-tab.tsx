@@ -15,6 +15,7 @@ const KINDS = {
   "role.": "Roles",
   "connector.": "Connectors",
   "access.": "Source access",
+  "mcp.": "MCP tools",
 } as const;
 
 const b = (text: string | null) => <strong className="font-medium text-foreground">{text ?? "someone"}</strong>;
@@ -67,6 +68,18 @@ function describe(a: Activity): ReactNode {
       return <>{b(a.actor ?? "Setup script")} connected {b(d.name ?? "")}</>;
     case "connector.synced":
       return <>{b(a.actor)} started a sync of {b(d.name ?? "")}</>;
+    case "mcp.added":
+      return <>{b(a.actor)} connected the {b(d.name ?? "")} MCP server</>;
+    case "mcp.removed":
+      return <>{b(a.actor)} removed the {b(d.name ?? "")} MCP server</>;
+    case "mcp.updated":
+      return <>{b(a.actor)} changed {(d.changed ?? []).join(", ")} on the {b(d.name ?? "")} MCP server</>;
+    case "mcp.tool_on":
+      return <>{b(a.actor)} turned on {b(d.name ?? "")}</>;
+    case "mcp.tool_off":
+      return <>{b(a.actor)} turned off {b(d.name ?? "")}</>;
+    case "mcp.tool_roles":
+      return <>{b(a.actor)} set who can use {b(d.name ?? "")}: {list(d.after)}</>;
     case "connector.removed":
       return <>{b(a.actor)} removed the {b(d.name ?? "")} connector</>;
     case "connector.updated":

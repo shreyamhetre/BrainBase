@@ -14,7 +14,7 @@ from fastapi import Depends, FastAPI
 from langfuse import get_client
 from pydantic import BaseModel, Field
 
-from app.api import account_routes, admin_routes, auth_routes, settings_routes
+from app.api import account_routes, admin_routes, auth_routes, mcp_routes, settings_routes
 from app.auth import User, current_user, search_roles
 from app.config import SYNC_SCHEDULER
 from app.connectors.sync import Scheduler
@@ -51,6 +51,7 @@ app.include_router(auth_routes.router)
 app.include_router(admin_routes.router)
 app.include_router(account_routes.router)
 app.include_router(settings_routes.router)
+app.include_router(mcp_routes.router)
 
 
 class AskRequest(BaseModel):
