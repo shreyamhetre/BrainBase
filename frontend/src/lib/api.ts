@@ -69,7 +69,26 @@ export type Connector = {
   you_can_read: string[];
   config: Record<string, string | null> | null; // admins only
   token_hint: string | null; // admins only
+  documents: number;
+  syncing: boolean;
+  last_run: {
+    status: "running" | "ok" | "error";
+    trigger: string;
+    started_at: string;
+    finished_at: string | null;
+    seen: number;
+    changed: number;
+    deleted: number;
+    chunks: number;
+    error: string | null;
+  } | null; // admins only
+  events_status: "off" | "starting" | "listening" | "error";
+  last_event_at: string | null;
+  events_error: string | null; // admins only
+  webhook_url: string | null; // admins only, GitLab
 };
+
+export type EventsResult = { connector: Connector; secret: string | null; registered: string[]; problems: string[] };
 
 export type NewConnector = { kind: "slack" | "gitlab"; name: string; token: string; url?: string; group?: string };
 
@@ -167,6 +186,10 @@ export const api = {
     request<Connector>(`/admin/connectors/${id}`, json("PATCH", changes)),
   removeConnector: (id: string) => request<void>(`/admin/connectors/${id}`, { method: "DELETE" }),
   checkConnector: (id: string) => request<Connector>(`/admin/connectors/${id}/check`, { method: "POST" }),
+  enableEvents: (id: string, body: { app_token?: string; register_webhooks?: boolean }) =>
+    request<EventsResult>(`/admin/connectors/${id}/events`, json("PUT", body)),
+  disableEvents: (id: string) => request<Connector>(`/admin/connectors/${id}/events`, { method: "DELETE" }),
+  syncConnector: (id: string) => request<{ started: boolean }>(`/admin/connectors/${id}/sync`, { method: "POST" }),
   access: (connectorId: string) => request<SourceAccess[]>(`/admin/connectors/${connectorId}/access`),
   editAccess: (id: string, allowed_roles: string[]) => request<SourceAccess>(`/admin/access/${id}`, json("PATCH", { allowed_roles })),
   mcp: () => request<McpServer[]>("/mcp"),

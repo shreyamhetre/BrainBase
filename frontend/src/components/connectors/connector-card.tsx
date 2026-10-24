@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { ErrorNote, Pill, RolesDropdown, Switch, rolesText } from "@/components/admin/parts";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { EventsPanel } from "@/components/connectors/events-panel";
 import { Icon } from "@/components/icons";
 import { api, type Connector, type SourceAccess } from "@/lib/api";
 import { fullDate, timeAgo } from "@/lib/format";
@@ -45,7 +46,7 @@ function AccessTable({ connector, roles, onChanged, ask }: {
     }
     ask({
       title: `Change who can read ${row.container_name}?`,
-      detail: `From "${rolesText(row.allowed_roles, "admins only")}" to "${rolesText(next, "admins only")}". It applies from the next sync.`,
+      detail: `From "${rolesText(row.allowed_roles, "admins only")}" to "${rolesText(next, "admins only")}". It applies to search straight away.`,
       yesLabel: "Save access",
       danger: next.includes("all") && row.container_kind === "private_channel",
       run: async () => {
@@ -110,7 +111,23 @@ export function ConnectorCard({ connector, isAdmin, roles, onChanged, onRemoved 
 
   const refresh = () => api.connectors().then((all) => { const me = all.find((c) => c.id === connector.id); if (me) onChanged(me); });
 
-  const statusPill = !connector.enabled ? <Pill>Off</Pill>
+  // While a sync runs, check every 2 seconds until it finishes.
+  useEffect(() => {
+    if (!connector.syncing) return;
+    const timer = setInterval(refresh, 2000);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connector.syncing]);
+
+  async function syncNow() {
+    await api.syncConnector(connector.id);
+    onChanged({ ...connector, syncing: true });
+  }
+
+  const lastRun = connector.last_run;
+
+  const statusPill = connector.syncing ? <Pill tone="brand">Syncing…</Pill>
+    : !connector.enabled ? <Pill>Off</Pill>
     : connector.status === "error" ? <Pill tone="bad">Needs attention</Pill>
     : <Pill tone="good">Connected</Pill>;
 
@@ -131,6 +148,8 @@ export function ConnectorCard({ connector, isAdmin, roles, onChanged, onRemoved 
             {" · "}
             <span title={fullDate(connector.last_sync_at)}>{connector.last_sync_at ? `synced ${timeAgo(connector.last_sync_at)}` : "not synced yet"}</span>
             {" · every "}{every(connector.sync_interval_minutes)}
+            {" · "}{connector.documents} {connector.documents === 1 ? "document" : "documents"} indexed
+            {connector.events_status === "listening" && " · updates within seconds"}
           </p>
           <p className="mt-3 text-sm">
             <span className="text-muted">{isAdmin ? "Sources: " : "You can read: "}</span>
@@ -153,6 +172,13 @@ export function ConnectorCard({ connector, isAdmin, roles, onChanged, onRemoved 
 
       {isAdmin && (
         <>
+          {lastRun && !connector.syncing && (
+            <p className={`mt-3 text-xs ${lastRun.status === "error" ? "text-red-700 dark:text-red-400" : "text-muted"}`}>
+              Last sync ({lastRun.trigger}, {timeAgo(lastRun.finished_at ?? lastRun.started_at)}):{" "}
+              {lastRun.status === "error" ? `failed: ${lastRun.error}`
+                : `${lastRun.seen} found, ${lastRun.changed} new or changed, ${lastRun.deleted} removed`}
+            </p>
+          )}
           {connector.status === "error" && connector.last_error && (
             <p className="mt-3 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-400">{connector.last_error}</p>
           )}
@@ -161,6 +187,10 @@ export function ConnectorCard({ connector, isAdmin, roles, onChanged, onRemoved 
             <button onClick={() => setShowAccess(!showAccess)} aria-expanded={showAccess}
               className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:border-brand/60">
               <Icon name="key" className="h-4 w-4 text-muted" /> Who can read what
+            </button>
+            <button disabled={busy || connector.syncing || !connector.enabled} onClick={() => run(syncNow)}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-strong disabled:opacity-50">
+              <Icon name="activity" className="h-4 w-4" /> {connector.syncing ? "Syncing…" : "Sync now"}
             </button>
             <button disabled={busy} onClick={() => run(async () => onChanged(await api.checkConnector(connector.id)))}
               className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:border-brand/60">
@@ -181,7 +211,7 @@ export function ConnectorCard({ connector, isAdmin, roles, onChanged, onRemoved 
             </label>
             <button onClick={() => setAsk({
                 title: `Remove ${connector.name}?`,
-                detail: "Its token and access mapping are deleted. Content from it is removed from search when syncing arrives.",
+                detail: "Its token, access mapping and everything indexed from it are deleted, so it disappears from search.",
                 yesLabel: "Remove connector", danger: true,
                 run: async () => { await api.removeConnector(connector.id); onRemoved(connector.id); },
               })}
@@ -189,6 +219,7 @@ export function ConnectorCard({ connector, isAdmin, roles, onChanged, onRemoved 
               Remove
             </button>
           </div>
+          <EventsPanel connector={connector} onChanged={onChanged} />
           {showAccess && <AccessTable connector={connector} roles={roles} onChanged={refresh} ask={setAsk} />}
         </>
       )}

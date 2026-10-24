@@ -123,7 +123,7 @@ Everything below is free or has a free tier, and runs on a laptop plus one LLM A
 | Orchestration | LangGraph | Steps as a graph with shared state, branching and retries; built for agents |
 | Connectors | GitLab API + webhooks, Slack API + Events (Socket Mode), configured in the app | Sync content and its permissions within seconds of a change |
 | Actions | Official GitLab and Slack MCP servers, connected once by the admin | Standard way to give agents tools; role-checked and confirmed |
-| Background sync | APScheduler | Scheduled safety-net sync per connector |
+| Background sync | A small scheduler thread in the API (no extra package) | Scheduled safety-net sync per connector |
 | Secrets | Tool tokens encrypted in Postgres (Fernet), key in `.env`; login JWT in an httpOnly cookie | A database copy alone can't use the tokens; scripts can't read the login |
 | Frontend | Next.js | Real product feel, streaming chat and admin console |
 | Evaluation | RAGAS plus a custom script | RAG-specific metrics: context precision, recall, faithfulness |

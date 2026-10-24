@@ -13,8 +13,11 @@ from fastapi import Depends, FastAPI
 from langfuse import get_client
 from pydantic import BaseModel, Field
 
-from app.api import account_routes, admin_routes, auth_routes, settings_routes
-from app.auth import User, current_user
+from app.api import account_routes, admin_routes, auth_routes, hooks_routes, settings_routes
+from app.auth import User, current_user, search_roles
+from app.config import SYNC_SCHEDULER
+from app.connectors.events import events
+from app.connectors.sync import Scheduler
 from app.embedding import get_model
 from app.graph import ask
 from app.retrieval.rank import get_reranker
@@ -24,7 +27,14 @@ from app.retrieval.rank import get_reranker
 async def lifespan(_: FastAPI):
     get_model()      # load both models once at startup, not on the first request
     get_reranker()
+    scheduler = Scheduler() if SYNC_SCHEDULER else None
+    if scheduler:
+        scheduler.start()  # syncs connectors whose interval has passed, checked every minute
+    events.reload()        # Slack Socket Mode connections for connectors with an app-level token
     yield
+    events.stop()
+    if scheduler:
+        scheduler.stop()
     get_client().flush()  # send any remaining traces to Langfuse on shutdown
 
 
@@ -38,6 +48,7 @@ app.include_router(auth_routes.router)
 app.include_router(admin_routes.router)
 app.include_router(account_routes.router)
 app.include_router(settings_routes.router)
+app.include_router(hooks_routes.router)
 
 
 class AskRequest(BaseModel):
@@ -74,7 +85,7 @@ def ask_question(request: AskRequest, user: User = Depends(current_user)) -> Ask
     # GPU and database work doesn't block the server.
     # Roles come from the database for the logged-in user, never from the request.
     start = time.perf_counter()
-    answer = ask(request.question, user.roles)
+    answer = ask(request.question, search_roles(user))
     return AskResponse(
         answer=answer.text,
         sources=[

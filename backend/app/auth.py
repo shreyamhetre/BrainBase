@@ -14,6 +14,7 @@ from fastapi import Depends, HTTPException, Request, status
 
 from app.config import JWT_EXPIRE_HOURS, JWT_SECRET
 from app.db.connection import connect
+from app.ingestion.store import ADMINS_ONLY
 from app.roles import content_roles
 
 ALGORITHM = "HS256"
@@ -61,6 +62,11 @@ def get_user(user_id: str) -> User | None:
         if user.is_admin:
             user.roles = content_roles(conn)  # admins can read everything, including roles added later
     return user
+
+
+def search_roles(user: User) -> list[str]:
+    """Roles the search filter uses. Admins also see content nobody has been given access to yet."""
+    return [*user.roles, ADMINS_ONLY] if user.is_admin else list(user.roles)
 
 
 def _token_from(request: Request) -> str | None:

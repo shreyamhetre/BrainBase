@@ -18,6 +18,8 @@ JWT_EXPIRE_HOURS = int(os.getenv("JWT_EXPIRE_HOURS", "24"))
 ALLOWED_EMAIL_DOMAIN = os.getenv("ALLOWED_EMAIL_DOMAIN", "gitmore.com").lower()  # company accounts only
 
 SECRETS_KEY = os.getenv("SECRETS_KEY", "")  # encrypts connector and MCP tokens in the database
+SYNC_SCHEDULER = os.getenv("SYNC_SCHEDULER", "1") != "0"  # background connector sync in the API
+PUBLIC_URL = os.getenv("PUBLIC_URL", "").rstrip("/")  # where GitLab can reach the API, for webhooks
 
 DATA_DIR = PROJECT_ROOT / "data"
 MIGRATIONS_DIR = PROJECT_ROOT / "db" / "migrations"

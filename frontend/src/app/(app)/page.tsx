@@ -121,7 +121,7 @@ export default function ChatPage() {
                 {user ? `Hi ${user.name.split(" ")[0]}, what do you want to know?` : "What do you want to know?"}
               </h1>
               <p className="mt-2 text-sm text-muted">
-                Answers come from GitLab&apos;s public handbook, with a citation for every claim.
+                Answers come from the handbook and the Slack, issues and wiki pages you can access, with a citation for every claim.
               </p>
               <div className="mx-auto mt-6 grid max-w-2xl gap-2 sm:grid-cols-2">
                 {EXAMPLES.map((example) => (
@@ -146,7 +146,7 @@ export default function ChatPage() {
                 {!turn.response && !turn.error && (
                   <div className="flex items-center gap-2 text-sm text-muted">
                     <span className="h-2 w-2 animate-pulse rounded-full bg-brand" />
-                    Searching the handbook…
+                    Searching your sources…
                   </div>
                 )}
                 {turn.error && <p className="text-sm text-red-600 dark:text-red-400">{turn.error}</p>}

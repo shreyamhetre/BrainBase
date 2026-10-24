@@ -14,16 +14,25 @@ from langfuse.openai import OpenAI
 from app.config import LLM_BASE_URL, LLM_MODEL, OPENAI_API_KEY
 from app.retrieval.search import Candidate
 
-NOT_FOUND = "I couldn't find this in the handbook."
+# Says nothing about restricted content: the user can't tell whether something exists that they may not read.
+NOT_FOUND = "I couldn't find this in the sources you can access."
+
+SOURCE_TYPES = {"handbook": "Handbook page", "slack": "Slack thread", "gitlab_issue": "GitLab issue",
+                "gitlab_wiki": "Wiki page"}
 
 SYSTEM_PROMPT = f"""You are GitMore, an unofficial assistant that answers questions about GitLab \
-using excerpts from GitLab's public handbook.
+using excerpts from the company's sources: the public handbook, Slack threads, GitLab issues and wiki pages.
 
 Rules:
 - Answer only from the numbered sources below. Do not use outside knowledge.
-- Cite every claim with the source number in square brackets, like [1] or [2][3].
+- Cite every claim with the source number in square brackets, like [1] or [2][3]. Only cite a source \
+for something that source actually says.
 - If the sources don't contain the answer, reply exactly: "{NOT_FOUND}"
-- If sources disagree, prefer the most recently updated one and mention the difference.
+- Handbook pages are official policy. Slack threads and issues are what people said or decided on a date.
+- If a Slack thread or issue contradicts a handbook page, give the handbook rule, then add one sentence \
+naming the conflict, for example: "An older Slack thread [1] from May 2026 said ..., but the handbook [2] \
+is the current rule." Never merge the two into one answer.
+- If two sources of the same kind disagree, prefer the most recently updated one and mention the difference.
 - If a source is a design document with status proposed or rejected, say so; it is not \
 how GitLab works today.
 - If the answer differs by country or team, give the general rule first, then the differences.
@@ -47,7 +56,7 @@ def get_client() -> OpenAI:
 def format_sources(chunks: list[Candidate]) -> str:
     blocks = []
     for n, c in enumerate(chunks, 1):
-        meta = [f"Link: {c.link}"]
+        meta = [SOURCE_TYPES.get(c.source, c.source), f"Link: {c.link}"]
         if c.updated_at:
             meta.append(f"Updated: {c.updated_at:%Y-%m-%d}")
         if c.status:

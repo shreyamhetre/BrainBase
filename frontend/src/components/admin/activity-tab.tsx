@@ -65,6 +65,12 @@ function describe(a: Activity): ReactNode {
       return <>{b(a.actor)} removed the {d.role} role</>;
     case "connector.added":
       return <>{b(a.actor ?? "Setup script")} connected {b(d.name ?? "")}</>;
+    case "connector.synced":
+      return <>{b(a.actor)} started a sync of {b(d.name ?? "")}</>;
+    case "connector.events_on":
+      return <>{b(a.actor)} turned on real-time updates for {b(d.name ?? "")}</>;
+    case "connector.events_off":
+      return <>{b(a.actor)} turned off real-time updates for {b(d.name ?? "")}</>;
     case "connector.removed":
       return <>{b(a.actor)} removed the {b(d.name ?? "")} connector</>;
     case "connector.updated":
