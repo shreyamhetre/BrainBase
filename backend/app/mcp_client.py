@@ -78,7 +78,12 @@ def _probe(url: str, token: str) -> str | None:
         if e.code == 403:
             return ("The token works but isn't allowed to use MCP here (403). Check the token's MCP tool permission "
                     "and that the group allows MCP client access.")
-        return f"The server answered HTTP {e.code}: {e.read().decode(errors='replace')[:150]}"
+        body = e.read().decode(errors="replace")
+        try:  # JSON-RPC errors carry a readable message, often with a link to fix it
+            body = json.loads(body).get("error", {}).get("message") or body
+        except (ValueError, AttributeError):
+            pass
+        return f"The server answered HTTP {e.code}: {body[:600]}"
     except urllib.error.URLError as e:
         return f"Can't reach {url}: {e.reason}"
 

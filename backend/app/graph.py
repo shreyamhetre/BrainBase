@@ -20,7 +20,7 @@ from typing import TypedDict
 from langfuse import get_client, observe, propagate_attributes
 from langgraph.graph import END, START, StateGraph
 
-from app.actions import ActionRefused, Scope, check, scope_for
+from app.actions import ActionRefused, Scope, check, scope_for, signature
 from app.chat_guard import is_company_question
 from app.auth import User, search_roles
 from app.db.connection import connect
@@ -129,17 +129,20 @@ def action_node(state: State) -> State:
         return {"reply": Reply(kind="choose", text=r.clarify, question=r.question, sources=sources,
                                action={"id": action_id, "tool": tool.name, "server": tool.server_name, "summary": summary,
                                        "arguments": r.arguments, "status": "proposed", "target": _target(scope, r.arguments),
-                                       "signature": f"Created with GitMore on behalf of {user.name}"},
+                                       "signature": signature(user, tool.server_kind)},
                                prompt_tokens=r.prompt_tokens, completion_tokens=r.completion_tokens)}
     action = {"id": action_id, "tool": tool.name, "server": tool.server_name, "summary": summary,
               "arguments": r.arguments, "status": "proposed", "target": _target(scope, r.arguments),
-              "signature": f"Created with GitMore on behalf of {user.name}"}
+              "signature": signature(user, tool.server_kind)}
     return {"reply": Reply(kind="action", text=summary, action=action, sources=sources,
                            prompt_tokens=r.prompt_tokens, completion_tokens=r.completion_tokens)}
 
 
 def _target(scope: Scope, arguments: dict) -> str:
-    """Where the action lands, in words: "engineering", "engineering · issue #7"."""
+    """Where the action lands, in words: "engineering", "engineering · issue #7", "#general"."""
+    if arguments.get("channel_id"):
+        channel = scope.channel(str(arguments["channel_id"]))
+        return channel.name if channel else ""
     project = next((p.name for p in scope.projects if str(arguments.get("project_id")) in (p.id, p.path, p.name)), "")
     iid = arguments.get("work_item_iid")
     return " · ".join(part for part in (project, f"issue #{iid}" if iid else "") if part)

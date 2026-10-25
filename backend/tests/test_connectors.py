@@ -57,5 +57,35 @@ class AccessRules(unittest.TestCase):
         self.assertNotIn(ADMINS_ONLY, search_roles(person))
 
 
+class SlackChannelRule(unittest.TestCase):
+    def setUp(self):
+        from app.actions import Channel, Scope, UsableTool
+        self.user = User("2", "b@x", "Aiko Tanaka", ["engineer"], False, None, None)
+        self.scope = Scope(tools=[UsableTool("t", "slack", "Slack", "u", "a", "slack_send_message", "", {})],
+                           channels=[Channel("C1", "#engineering"), Channel("C2", "#general")])
+
+    def check(self, target):
+        from app.actions import check
+        args = {"channel_id": target, "message": "hi"}
+        check(self.scope, self.user, "slack_send_message", args)
+        return args["channel_id"]
+
+    def test_readable_channel_by_name_or_id(self):
+        self.assertEqual(self.check("#engineering"), "C1")
+        self.assertEqual(self.check("general"), "C2")
+        self.assertEqual(self.check("C2"), "C2")
+
+    def test_other_channels_and_direct_messages_refused(self):
+        from app.actions import ActionRefused
+        for target in ("#hr-private", "U0CAYHGT0KZ", ""):
+            with self.assertRaises(ActionRefused):
+                self.check(target)
+
+    def test_slack_posts_are_signed_as_sent(self):
+        from app.actions import sign
+        self.assertTrue(sign({"message": "Release done"}, self.user, "slack")["message"].endswith(
+            "_Sent with GitMore on behalf of Aiko Tanaka_"))
+
+
 if __name__ == "__main__":
     unittest.main()

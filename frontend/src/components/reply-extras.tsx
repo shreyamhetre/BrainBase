@@ -9,6 +9,7 @@ import type { ProposedAction } from "@/lib/api";
 const START_COMMAND: Record<string, { label: string; text: string }> = {
   save_work_item: { label: "Create an issue for me", text: "Create an issue in " },
   save_note: { label: "Add a comment for me", text: "Add a comment on issue " },
+  slack_send_message: { label: "Post it in Slack for me", text: "Post in #" },
 };
 
 // Under a how-to answer: one click starts the command in the message box, ready to finish and send.
@@ -30,7 +31,8 @@ export function ChooseReply({ text, question, action, onExplain }: {
 }) {
   const [picked, setPicked] = useState<"explain" | "do" | null>(
     action && action.status !== "proposed" ? "do" : null);
-  const doLabel = action?.tool === "save_note" ? "Add the comment" : "Create the issue";
+  const doLabel = action?.tool === "save_note" ? "Add the comment"
+    : action?.tool?.startsWith("slack_") ? "Send the message" : "Create the issue";
 
   return (
     <div>

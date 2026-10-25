@@ -11,8 +11,12 @@ type State = "proposed" | "running" | "done" | "failed" | "cancelled";
 const TOOLS: Record<string, { title: string; verb: string; text: string; done: string }> = {
   save_work_item: { title: "New issue", verb: "Create issue", text: "Description", done: "Issue created" },
   save_note: { title: "New comment", verb: "Post comment", text: "Comment", done: "Comment posted" },
+  slack_send_message: { title: "New Slack message", verb: "Send message", text: "Message", done: "Message sent" },
+  slack_schedule_message: { title: "Scheduled Slack message", verb: "Schedule message", text: "Message", done: "Message scheduled" },
+  slack_send_message_draft: { title: "Slack draft", verb: "Save draft", text: "Message", done: "Draft saved in Slack" },
 };
-const TEXT_KEYS = ["description", "body", "text"];
+const TEXT_KEYS = ["description", "body", "text", "message"];
+const SIGNED = /\s*_(Created|Sent) with GitMore on behalf of [^_]+_\s*$/;
 
 function StatusBadge({ state }: { state: State }) {
   const styles: Record<State, string> = {
@@ -39,7 +43,8 @@ export function ActionCard({ action }: { action: ProposedAction }) {
 
   const textKey = TEXT_KEYS.find((k) => typeof args[k] === "string");
   const title = typeof args.title === "string" ? args.title : "";
-  const text = textKey ? (args[textKey] as string) : "";
+  // After confirming, the saved text already ends with the signature: show it once, below
+  const text = (textKey ? (args[textKey] as string) : "").replace(SIGNED, "");
   const resultUrl = result?.result_url ?? action.result_url ?? null;
 
   async function confirm() {
@@ -73,7 +78,8 @@ export function ActionCard({ action }: { action: ProposedAction }) {
     <div className="overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
       {/* Header: what and where */}
       <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-3">
-        <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#fc6d26] text-sm font-bold text-white" aria-hidden="true">
+        <span className={`flex h-9 w-9 items-center justify-center rounded-lg text-sm font-bold text-white ${
+          action.server.toLowerCase().includes("slack") ? "bg-[#4a154b]" : "bg-[#fc6d26]"}`} aria-hidden="true">
           {action.server.slice(0, 1).toUpperCase()}
         </span>
         <div className="min-w-0 flex-1">

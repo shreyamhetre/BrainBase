@@ -2,8 +2,9 @@
 
 - Usable tools: action tools (never read-only) that are on, on a server that is on, whose
   allowed roles include one of the person's roles (admins: all).
-- Allowed projects: the GitLab projects the person can read through the GitLab connector's
-  access mapping. An action may only target one of those.
+- Allowed projects and channels: the GitLab projects and Slack channels the person can read
+  through the connectors' access mapping. An action may only target one of those (no direct
+  messages to people: posts stay in channels, visible and accountable).
 - Every check runs twice: when GitMore proposes the action, and again when the person
   confirms, so a role or setting changed in between is respected.
 """
@@ -17,12 +18,13 @@ import psycopg
 from app.auth import User
 
 # Arguments that hold text written into the tool, where GitMore adds who asked for it.
-TEXT_FIELDS = ("description", "body", "text")
+TEXT_FIELDS = ("description", "body", "text", "message")
 
 
 @dataclass
 class UsableTool:
     id: str
+    server_kind: str     # gitlab, slack, custom
     server_name: str
     server_url: str
     auth_encrypted: str
@@ -40,9 +42,20 @@ class Project:
 
 
 @dataclass
+class Channel:
+    id: str         # Slack channel id, e.g. C0123
+    name: str       # e.g. #engineering
+
+
+@dataclass
 class Scope:
     tools: list[UsableTool] = field(default_factory=list)
     projects: list[Project] = field(default_factory=list)
+    channels: list[Channel] = field(default_factory=list)
+
+    def channel(self, target: str) -> Channel | None:
+        target = target.strip()
+        return next((c for c in self.channels if target in (c.id, c.name, c.name.lstrip("#"))), None)
 
     def tool(self, name: str) -> UsableTool | None:
         return next((t for t in self.tools if t.name == name), None)
@@ -52,7 +65,7 @@ def scope_for(conn: psycopg.Connection, user: User) -> Scope:
     roles = list({*user.roles, "all"})
     tools = conn.execute(
         """
-        SELECT t.id::text, s.name, s.url, s.auth_encrypted, t.name, t.description, t.input_schema
+        SELECT t.id::text, s.kind, s.name, s.url, s.auth_encrypted, t.name, t.description, t.input_schema
         FROM mcp_tools t JOIN mcp_servers s ON s.id = t.server_id
         WHERE t.enabled AND NOT t.read_only AND s.enabled AND s.auth_encrypted IS NOT NULL
           AND (%(admin)s OR t.allowed_roles && %(roles)s)
@@ -69,8 +82,18 @@ def scope_for(conn: psycopg.Connection, user: User) -> Scope:
         """,
         {"admin": user.is_admin, "roles": roles},
     ).fetchall()
+    channels = conn.execute(
+        """
+        SELECT a.container_id, a.container_name
+        FROM source_access a JOIN connectors c ON c.id = a.connector_id
+        WHERE c.kind = 'slack' AND c.enabled AND (%(admin)s OR a.allowed_roles && %(roles)s)
+        ORDER BY a.container_name
+        """,
+        {"admin": user.is_admin, "roles": roles},
+    ).fetchall()
     return Scope(
         tools=[UsableTool(*row) for row in tools],
+        channels=[Channel(id=cid, name=name) for cid, name in channels],
         projects=[Project(id=pid, path=f"{group}/{name}", name=name,
                           web_url=f"{(url or 'https://gitlab.com').rstrip('/')}/{group}/{name}")
                   for pid, group, name, url in projects],
@@ -88,6 +111,13 @@ def check(scope: Scope, user: User, tool_name: str, arguments: dict) -> UsableTo
         raise ActionRefused(f"{tool_name} isn't turned on for your role.")
     if not isinstance(arguments, dict):
         raise ActionRefused("The action's details are malformed.")
+    if tool.server_kind == "slack":
+        channel = scope.channel(str(arguments.get("channel_id") or ""))
+        if not channel:
+            names = ", ".join(c.name for c in scope.channels) or "none"
+            raise ActionRefused(f"You can only post in Slack channels you can read: {names}.")
+        arguments["channel_id"] = channel.id
+        return tool
     if arguments.get("group_id") and not user.is_admin:
         raise ActionRefused("Actions on a whole group are for admins only; pick a project.")
     target = str(arguments.get("project_id") or "").strip()
@@ -103,12 +133,16 @@ def check(scope: Scope, user: User, tool_name: str, arguments: dict) -> UsableTo
     return tool
 
 
-def sign(arguments: dict, user: User) -> dict:
+def signature(user: User, server_kind: str) -> str:
+    return f"{'Sent' if server_kind == 'slack' else 'Created'} with GitMore on behalf of {user.name}"
+
+
+def sign(arguments: dict, user: User, server_kind: str = "gitlab") -> dict:
     """Mark text written into the tool with who asked, since the server acts with the admin's token."""
     signed = dict(arguments)
     for key in TEXT_FIELDS:
         if isinstance(signed.get(key), str) and signed[key].strip():
-            signed[key] = f"{signed[key].rstrip()}\n\n_Created with GitMore on behalf of {user.name}_"
+            signed[key] = f"{signed[key].rstrip()}\n\n_{signature(user, server_kind)}_"
             break
     return signed
 
@@ -137,9 +171,14 @@ URL = re.compile(r"https?://[^\s\"'<>)]+")
 
 
 def result_link(text: str, data: dict | None) -> str | None:
-    """The web link of what the tool created, when it says so."""
-    for key in ("web_url", "webUrl", "url"):
+    """The web link of what the tool created, when it says so (GitLab: web_url; Slack: message_link)."""
+    if not isinstance(data, dict):
+        try:  # some servers return their result as JSON text
+            data = json.loads(text or "")
+        except ValueError:
+            data = None
+    for key in ("web_url", "webUrl", "message_link", "permalink", "url"):
         if isinstance(data, dict) and isinstance(data.get(key), str):
             return data[key]
-    match = URL.search(text or "") or URL.search(json.dumps(data or {}))
+    match = URL.search((text or "").replace("\\/", "/")) or URL.search(json.dumps(data or {}).replace("\\/", "/"))
     return match.group(0) if match else None

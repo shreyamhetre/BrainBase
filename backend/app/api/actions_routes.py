@@ -59,7 +59,7 @@ def confirm(action_id: UUID, body: Confirm, user: User = Depends(current_user)) 
             tool = check(scope_for(conn, user), user, action.tool, dict(body.arguments))
         except ActionRefused as e:
             raise HTTPException(status.HTTP_403_FORBIDDEN, str(e)) from None
-        arguments = sign(body.arguments, user)
+        arguments = sign(body.arguments, user, tool.server_kind)
         # Claim it first, so a double click can't run it twice
         claimed = conn.execute("UPDATE actions SET status = 'failed', decided_at = now(), arguments = %s "
                                "WHERE id = %s AND status = 'proposed' RETURNING id", (json.dumps(arguments), aid)).fetchone()

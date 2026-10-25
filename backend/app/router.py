@@ -14,6 +14,7 @@ told so, and graph.py double-checks with a local relevance test (chat_guard.py).
 import json
 import re
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 
 from app.actions import Scope
 from app.config import LLM_MODEL
@@ -64,6 +65,9 @@ Actions:
 - Use project_id from the list of projects; never a project that isn't listed.
 - To create an issue with save_work_item: project_id, type_name "Issue", a short title, and a clear description.
 - To comment with save_note: project_id, work_item_iid (the issue number) and body.
+- To post in Slack with slack_send_message: channel_id from the list of Slack channels, and message. Only channels from
+  the list; never a person (no direct messages). For a later time use slack_schedule_message with post_at as a Unix
+  timestamp computed from "Now"; for "draft a message" use slack_send_message_draft.
 - Write titles, descriptions and comments in plain, professional language. Don't add who asked; GitMore does.
 - Use context_query ONLY when the person explicitly asks to include company information (summarize, look up, include
   the policy...); then set the description or body to an empty string, it is written after the search. For
@@ -78,6 +82,9 @@ Examples (assuming save_work_item is available):
 - "How do I create an issue?" → knowledge, offer_tool "save_work_item"
 - "Create an issue in engineering: the staging QA stage times out again" → action
 - "how do I create an issue for the staging QA timeouts?" → choose
+- "Post in #engineering that the release is done" → action, slack_send_message
+- "Post the PTO notice rules in #general" → action, slack_send_message, context_query "PTO notice rules"
+- "Send Hannah a DM" → clarify (GitMore only posts in channels)
 - "help" → clarify
 """
 
@@ -113,7 +120,9 @@ def _tools_text(scope: Scope) -> str:
 
 def _ask_router(message: str, scope: Scope, history: list[dict] | None, person: str, extra: str = "") -> tuple[dict, int, int]:
     projects = "\n".join(f"- {p.name}: project_id {p.id}" for p in scope.projects) or "(none)"
+    channels = "\n".join(f"- {c.name}: channel_id {c.id}" for c in scope.channels) or "(none)"
     earlier = "\n".join(f"{m['role']}: {m['content']}" for m in history or [])
+    now = datetime.now(timezone.utc)
     response = get_client().chat.completions.create(
         name="router",
         model=LLM_MODEL,
@@ -121,9 +130,10 @@ def _ask_router(message: str, scope: Scope, history: list[dict] | None, person: 
         response_format={"type": "json_object"},
         messages=[
             {"role": "system", "content": ROUTER_PROMPT + extra},
-            {"role": "user", "content": f"Person: {person}"
+            {"role": "user", "content": f"Person: {person}\nNow: {now:%Y-%m-%d %H:%M} UTC (Unix {int(now.timestamp())})"
                                         f"\n\nAvailable tools:\n{_tools_text(scope) or '(none for this person)'}"
                                         f"\n\nProjects you may act in:\n{projects}"
+                                        f"\n\nSlack channels you may post in:\n{channels}"
                                         + (f"\n\nEarlier messages:\n{earlier}" if earlier else "")
                                         + f"\n\nMessage: {message}"},
         ],
