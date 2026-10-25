@@ -49,7 +49,7 @@ def open_conversation(conversation_id: UUID, user: User = Depends(current_user))
         messages = conn.execute("SELECT id, role, content, kind, payload, created_at FROM messages "
                                 "WHERE conversation_id = %s ORDER BY id", (row[0],)).fetchall()
         # Actions may have been confirmed since: show their current state, not the one at proposal time
-        action_ids = [m[4]["action"]["id"] for m in messages if m[3] == "action" and m[4].get("action")]
+        action_ids = [m[4]["action"]["id"] for m in messages if m[3] in ("action", "choose") and m[4].get("action")]
         current = {a[0]: a for a in conn.execute(
             "SELECT id::text, status, arguments, result_url FROM actions WHERE id::text = ANY(%s) AND user_id = %s",
             (action_ids, user.id))} if action_ids else {}

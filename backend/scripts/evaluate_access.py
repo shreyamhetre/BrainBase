@@ -3,7 +3,7 @@
 Cases live in eval/access_questions.json:
 - leak:     nothing the person may not read appears in the sources or the answer (target: zero leaks)
 - find:     someone with the right role does reach the restricted source
-- route:    the router picks answer, action (and the right tool) or clarify
+- route:    the router picks chat, answer, action, choose (with the right tool) or clarify
 - conflict: the PTO answer gives the handbook rule and names the older Slack answer
 - cross:    the answer draws on more than one tool (issues and Slack)
 
@@ -90,6 +90,10 @@ def check_full(case: dict, user: User) -> dict:
             problems.append(f"route {reply.kind}, expected {case['expect_route']}")
         elif case.get("expect_tool") and (reply.action or {}).get("tool") != case["expect_tool"]:
             problems.append(f"tool {(reply.action or {}).get('tool')}, expected {case['expect_tool']}")
+        if case.get("expect_offer") and reply.offer_tool != case["expect_offer"]:
+            problems.append(f"offered {reply.offer_tool or 'nothing'}, expected {case['expect_offer']}")
+        if reply.kind == "chat" and reply.sources:
+            problems.append("a chat reply came with sources")
     if t == "conflict":
         problems += [f"answer lacks '{x}'" for x in case["expect_text"] + case["expect_mention"] if x.lower() not in text.lower()]
     return {"route": reply.kind, "sources": kinds, "answer": text[:500], "problems": problems,

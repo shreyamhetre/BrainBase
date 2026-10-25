@@ -88,10 +88,12 @@ class ProposedAction(BaseModel):
 
 class AskResponse(BaseModel):
     conversation_id: str
-    kind: str                       # answer, action, clarify
+    kind: str                       # answer, action, choose, clarify, chat
     answer: str                     # the answer, the action summary, or the clarifying question
     sources: list[Source]
     action: ProposedAction | None = None
+    question: str = ""              # choose: what "Explain the process" searches for
+    offer_tool: str = ""            # answer: a tool that could do what they asked how to do
     prompt_tokens: int
     completion_tokens: int
     seconds: float
@@ -135,11 +137,14 @@ def ask_question(request: AskRequest, user: User = Depends(current_user)) -> Ask
             for n, c in enumerate(reply.sources, 1)
         ],
         action=ProposedAction(**reply.action) if reply.action else None,
+        question=reply.question,
+        offer_tool=reply.offer_tool,
         prompt_tokens=reply.prompt_tokens,
         completion_tokens=reply.completion_tokens,
         seconds=seconds,
     )
     with connect() as conn:
         save_turn(conn, conversation_id, request.question, reply.kind, reply.text,
-                  response.model_dump(include={"sources", "action", "prompt_tokens", "completion_tokens", "seconds"}))
+                  response.model_dump(include={"sources", "action", "question", "offer_tool", "prompt_tokens",
+                                               "completion_tokens", "seconds"}))
     return response

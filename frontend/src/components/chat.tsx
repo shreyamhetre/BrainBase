@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { ActionCard } from "@/components/action-card";
+import { ChooseReply, OfferAction } from "@/components/reply-extras";
 import { AnswerText } from "@/components/answer-text";
 import { api, ApiError, CHATS_CHANGED, NEW_CHAT, type AskResponse, type Conversation, type Source } from "@/lib/api";
 import { useUser } from "@/lib/user-context";
@@ -98,6 +99,7 @@ export function Chat({ conversationId }: { conversationId?: string }) {
   const [busy, setBusy] = useState(false);
   const [highlight, setHighlight] = useState<{ turn: number; n: number } | null>(null);
   const bottom = useRef<HTMLDivElement>(null);
+  const input = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (!conversationId) return;
@@ -157,6 +159,18 @@ export function Chat({ conversationId }: { conversationId?: string }) {
     }
   }
 
+  // "Create an issue for me": put the start of the command in the box, ready to finish and send
+  function startCommand(text: string) {
+    setQuestion(text);
+    requestAnimationFrame(() => {
+      const box = input.current;
+      if (box) {
+        box.focus();
+        box.setSelectionRange(text.length, text.length);
+      }
+    });
+  }
+
   function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
@@ -213,7 +227,13 @@ export function Chat({ conversationId }: { conversationId?: string }) {
                   <>
                     {turn.response.kind === "action" && turn.response.action
                       ? <ActionCard action={turn.response.action} />
-                      : <AnswerText text={turn.response.answer} onCite={(n) => cite(turn.id, n)} />}
+                      : turn.response.kind === "choose"
+                        ? <ChooseReply text={turn.response.answer} question={turn.response.question ?? turn.question}
+                            action={turn.response.action} onExplain={(q) => ask(q)} />
+                        : <AnswerText text={turn.response.answer} onCite={(n) => cite(turn.id, n)} />}
+                    {turn.response.kind === "answer" && turn.response.offer_tool && (
+                      <OfferAction tool={turn.response.offer_tool} onStart={startCommand} />
+                    )}
                     {turn.response.sources.length > 0 && (
                       <div className="mt-4 border-t border-border pt-4">
                         <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">Sources</div>
@@ -240,6 +260,7 @@ export function Chat({ conversationId }: { conversationId?: string }) {
         <div className="sticky bottom-0 bg-background pb-4 pt-2">
           <div className="flex items-end gap-2 rounded-2xl border border-border bg-surface p-2 shadow-sm focus-within:border-brand">
             <textarea
+              ref={input}
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
               onKeyDown={onKeyDown}
@@ -247,7 +268,7 @@ export function Chat({ conversationId }: { conversationId?: string }) {
               placeholder="Ask about policies, processes, engineering…"
               className="max-h-40 flex-1 resize-none bg-transparent px-2 py-2 text-sm outline-none"
             />
-            <button onClick={() => ask(question)} disabled={busy || question.trim().length < 3}
+            <button onClick={() => ask(question)} disabled={busy || !question.trim()}
               className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-strong disabled:opacity-50">
               {busy ? "…" : "Ask"}
             </button>

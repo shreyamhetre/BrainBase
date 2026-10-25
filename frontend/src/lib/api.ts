@@ -166,10 +166,12 @@ export type ActionResult = ProposedAction & { result_text: string | null; result
 
 export type AskResponse = {
   conversation_id: string;
-  kind: "answer" | "action" | "clarify";
+  kind: "answer" | "action" | "choose" | "clarify" | "chat";
   answer: string; // the answer, the action summary, or the clarifying question
   sources: Source[];
   action: ProposedAction | null;
+  question?: string; // choose: what "Explain the process" searches for
+  offer_tool?: string; // answer: a tool that could do what they asked how to do
   prompt_tokens: number;
   completion_tokens: number;
   seconds: number;
