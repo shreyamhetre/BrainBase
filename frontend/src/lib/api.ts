@@ -127,6 +127,7 @@ export type Usage = {
   top_users: { name: string; questions: number; tokens: number; cost_usd: number }[];
   recent: {
     id: number;
+    route: string | null;
     user: string | null;
     question: string;
     found: boolean;
@@ -137,6 +138,42 @@ export type Usage = {
     trace_url: string | null;
     created_at: string;
   }[];
+};
+
+export type InspectedChunk = {
+  rank: number;
+  source: string;
+  title: string;
+  heading_path: string;
+  link: string;
+  updated_at: string | null;
+  cited: boolean;
+  vector_rank: number | null;
+  vector_score: number | null;
+  keyword_rank: number | null;
+  keyword_score: number | null;
+  rrf_score: number | null;
+  rerank_score: number | null;
+  preview: string;
+};
+
+export type UsageDetail = {
+  id: number;
+  user: string | null;
+  user_email: string | null;
+  question: string;
+  route: string | null;
+  search_question: string | null;
+  answer: string;
+  found: boolean;
+  model: string;
+  prompt_tokens: number;
+  completion_tokens: number;
+  cost_usd: number;
+  seconds: number;
+  trace_url: string | null;
+  created_at: string;
+  details: { chunks?: InspectedChunk[]; action?: { tool: string; server: string; summary: string; target?: string } };
 };
 
 export type Source = {
@@ -314,5 +351,6 @@ export const api = {
   decide: (id: string, approve: boolean, note: string | null) =>
     request<AccessRequest>(`/admin/requests/${id}/decision`, json("POST", { approve, note })),
   usage: () => request<Usage>("/admin/usage"),
+  usageDetail: (id: number) => request<UsageDetail>(`/admin/usage/${id}`),
   activity: (limit = 100) => request<Activity[]>(`/admin/activity?limit=${limit}`),
 };

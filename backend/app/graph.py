@@ -47,6 +47,9 @@ class Reply:
     trace_id: str | None = None
     trace_url: str | None = None
     sources: list[Candidate] = field(default_factory=list)
+    # For the query inspector: what was searched and every chunk found, even when none were used
+    search_question: str = ""
+    retrieved: list[Candidate] = field(default_factory=list)
 
 
 class State(TypedDict, total=False):
@@ -84,6 +87,7 @@ def answer_node(state: State) -> State:
     # "Couldn't find": the chunks it looked at didn't answer the question, so don't show them as sources
     sources = [] if NOT_FOUND.rstrip(".") in answer.text else answer.sources
     return {"reply": Reply(kind="answer", text=answer.text, answer=answer, sources=sources,
+                           search_question=r.question, retrieved=state["chunks"],
                            offer_tool=r.offer_tool if sources else "",
                            prompt_tokens=answer.prompt_tokens + r.prompt_tokens,
                            completion_tokens=answer.completion_tokens + r.completion_tokens)}
@@ -128,6 +132,7 @@ def action_node(state: State) -> State:
         ).fetchone()[0]
     if r.kind == "choose":
         return {"reply": Reply(kind="choose", text=r.clarify, question=r.question, sources=sources,
+                               search_question=r.context_query, retrieved=sources,
                                action={"id": action_id, "tool": tool.name, "server": tool.server_name, "summary": summary,
                                        "arguments": r.arguments, "status": "proposed", "target": _target(scope, r.arguments),
                                        "signature": signature(user, tool.server_kind)},
@@ -136,6 +141,7 @@ def action_node(state: State) -> State:
               "arguments": r.arguments, "status": "proposed", "target": _target(scope, r.arguments),
               "signature": signature(user, tool.server_kind)}
     return {"reply": Reply(kind="action", text=summary, action=action, sources=sources,
+                           search_question=r.context_query, retrieved=sources,
                            prompt_tokens=r.prompt_tokens, completion_tokens=r.completion_tokens)}
 
 

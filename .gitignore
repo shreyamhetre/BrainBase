@@ -6,7 +6,6 @@ docs/open-decisions.md
 docs/steps.md
 frontend/AGENTS.md
 frontend/README.md
-.env.example
 
 # Python
 __pycache__/

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { EmptyState, ErrorNote, Pill } from "@/components/admin/parts";
+import { QueryInspector } from "@/components/admin/query-inspector";
 import { api, type Usage, type UsageTotals } from "@/lib/api";
 import { fullDate, timeAgo } from "@/lib/format";
 
@@ -27,6 +28,7 @@ function Totals({ label, t }: { label: string; t: UsageTotals }) {
 // Questions, tokens and cost from GitMore's own log, kept even while Langfuse is off.
 export function UsageTab() {
   const [usage, setUsage] = useState<Usage | null>(null);
+  const [inspecting, setInspecting] = useState<number | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -39,8 +41,8 @@ export function UsageTab() {
   return (
     <div className="space-y-8">
       <p className="text-sm text-muted">
-        Every question is recorded here with its tokens, cost and time, even when Langfuse is off. Open a trace to see
-        each step in Langfuse.
+        Every question is recorded here with its tokens, cost and time, even when Langfuse is off. Click a question to
+        inspect it: the route, what was searched and every chunk found with its scores.
       </p>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -83,9 +85,14 @@ export function UsageTab() {
               </thead>
               <tbody>
                 {usage.recent.map((r) => (
-                  <tr key={r.id} className="border-b border-border last:border-0">
+                  <tr key={r.id} onClick={() => setInspecting(r.id)}
+                    className="cursor-pointer border-b border-border last:border-0 hover:bg-navy/[0.03]">
                     <td className="max-w-[22rem] px-5 py-3">
-                      <div className="truncate" title={r.question}>{r.question}</div>
+                      <button onClick={(e) => { e.stopPropagation(); setInspecting(r.id); }}
+                        className="block max-w-full truncate text-left font-medium hover:text-brand-strong" title={r.question}>
+                        {r.question}
+                      </button>
+                      {r.route && <span className="mr-1 text-[11px] text-muted">{r.route}</span>}
                       {!r.found && <Pill tone="warn">couldn&apos;t find</Pill>}
                     </td>
                     <td className="px-4 py-3 text-muted">{r.user ?? "deleted user"}</td>
@@ -95,7 +102,8 @@ export function UsageTab() {
                     <td className="px-4 py-3 text-xs text-muted" title={fullDate(r.created_at)}>{timeAgo(r.created_at)}</td>
                     <td className="px-4 py-3">
                       {r.trace_url
-                        ? <a href={r.trace_url} target="_blank" rel="noreferrer" className="text-brand-strong hover:underline">Open</a>
+                        ? <a href={r.trace_url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
+                            className="text-brand-strong hover:underline">Open</a>
                         : <span className="text-xs text-muted">not traced</span>}
                     </td>
                   </tr>
@@ -105,6 +113,7 @@ export function UsageTab() {
           </div>
         )}
       </section>
+      {inspecting !== null && <QueryInspector id={inspecting} onClose={() => setInspecting(null)} />}
     </div>
   );
 }

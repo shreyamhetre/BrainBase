@@ -213,6 +213,7 @@ class UsageTotals(BaseModel):
 
 class UsageRow(BaseModel):
     id: int
+    route: str | None
     user: str | None
     question: str
     found: bool
@@ -252,7 +253,7 @@ def usage(_: User = Depends(admin_user)) -> Usage:
             "FROM query_log q LEFT JOIN users u ON u.id = q.user_id GROUP BY 1 ORDER BY 2 DESC LIMIT 5"
         ).fetchall()
         recent = conn.execute(
-            "SELECT q.id, u.name, q.question, q.found, jsonb_array_length(q.sources), q.prompt_tokens + q.completion_tokens, "
+            "SELECT q.id, q.route, u.name, q.question, q.found, jsonb_array_length(q.sources), q.prompt_tokens + q.completion_tokens, "
             "q.cost_usd, q.seconds, q.trace_url, q.created_at FROM query_log q LEFT JOIN users u ON u.id = q.user_id "
             "ORDER BY q.created_at DESC LIMIT 50"
         ).fetchall()
@@ -263,3 +264,36 @@ def usage(_: User = Depends(admin_user)) -> Usage:
             top_users=[{"name": n, "questions": q, "tokens": t, "cost_usd": float(c)} for n, q, t, c in top],
             recent=[UsageRow(**dict(zip(UsageRow.model_fields, row))) for row in recent],
         )
+
+
+class UsageDetail(BaseModel):
+    id: int
+    user: str | None
+    user_email: str | None
+    question: str
+    route: str | None
+    search_question: str | None
+    answer: str
+    found: bool
+    model: str
+    prompt_tokens: int
+    completion_tokens: int
+    cost_usd: float
+    seconds: float
+    trace_url: str | None
+    created_at: datetime
+    details: dict
+
+
+@router.get("/usage/{log_id}", response_model=UsageDetail)
+def usage_detail(log_id: int, _: User = Depends(admin_user)) -> UsageDetail:
+    """The query inspector: everything recorded about one message."""
+    with connect() as conn:
+        row = conn.execute(
+            "SELECT q.id, u.name, u.email, q.question, q.route, q.search_question, q.answer, q.found, q.model, "
+            "q.prompt_tokens, q.completion_tokens, q.cost_usd, q.seconds, q.trace_url, q.created_at, q.details "
+            "FROM query_log q LEFT JOIN users u ON u.id = q.user_id WHERE q.id = %s", (log_id,),
+        ).fetchone()
+    if not row:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No such question in the log")
+    return UsageDetail(**dict(zip(UsageDetail.model_fields, row)))
