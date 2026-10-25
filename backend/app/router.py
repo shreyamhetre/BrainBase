@@ -32,6 +32,9 @@ Rules:
   for adoption?"); for actions, "file that as an issue" refers to the earlier answer.
 - "action" only when the person clearly asks to do something one of the available tools does
   (create an issue, add a comment...). Never invent tools or projects.
+- A command to do something ("create an issue…", "add a comment…", "post…", "file…", "open an issue…") is an
+  "action" whenever an available tool can do it, even if the handbook also explains how to do it by hand.
+  Questions about how to do something ("how do I create an issue?") stay "knowledge".
 - A message that asks to look something up AND do something with it ("summarize X and file it as an issue",
   "find Y and comment it on issue 4") is an "action", never "knowledge": set context_query to what to look up.
 - Use project_id from the list of projects; never a project that isn't listed.
@@ -102,7 +105,10 @@ def route(message: str, scope: Scope, history: list[dict] | None = None) -> Rout
                    context_query=(action.get("context_query") or "").strip(),
                    prompt_tokens=usage.prompt_tokens, completion_tokens=usage.completion_tokens)
     if result.kind == "action" and not scope.tool(result.tool):
-        result.kind, result.question = "knowledge", message  # it picked a tool it can't use: just answer
+        # It picked a tool this person can't use: say so plainly instead of searching
+        result.kind = "clarify"
+        result.clarify = ("That action isn't available to you in GitMore. You can request access from your profile, "
+                          "or ask an admin to turn it on for your role.")
     if result.kind == "clarify" and not result.clarify:
         result.kind, result.question = "knowledge", message
     return result

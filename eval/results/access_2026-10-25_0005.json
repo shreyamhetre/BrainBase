@@ -1,0 +1,43 @@
+{
+  "summary": {
+    "mode": "full",
+    "passed": 1,
+    "total": 2,
+    "leaks": 0,
+    "by_type": {
+      "route": "1/2"
+    },
+    "tokens": 5019,
+    "seconds": 23.5
+  },
+  "results": [
+    {
+      "id": "R2",
+      "type": "route",
+      "as": "Aiko Tanaka",
+      "message": "Create an issue in engineering: the staging QA stage times out again",
+      "route": "answer",
+      "sources": [
+        "gitlab_issue",
+        "handbook",
+        "slack"
+      ],
+      "answer": "To create an issue regarding the staging QA stage timing out, follow these steps:\n\n1. **Create an Issue**: Open an issue in the GitLab project using the QA failure template. Make sure to apply the `~\"type::ignore\"` label until the investigation is complete [5].\n2. **Inform the Team**: Notify the owning team about the failure based on the feature category or product group [5].\n3. **Post in Slack**: In the relevant Slack channel, add the :boom: emoji and reply to the failure notification with a li",
+      "problems": [
+        "route answer, expected action"
+      ],
+      "tokens": 3156
+    },
+    {
+      "id": "R3",
+      "type": "route",
+      "as": "GitMore Admin",
+      "message": "Add a comment on engineering issue 3 saying I'll look at it tomorrow",
+      "route": "action",
+      "sources": [],
+      "answer": "Add a comment to engineering issue 3",
+      "problems": [],
+      "tokens": 1863
+    }
+  ]
+}

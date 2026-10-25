@@ -1,0 +1,26 @@
+{
+  "summary": {
+    "mode": "full",
+    "passed": 1,
+    "total": 1,
+    "leaks": 0,
+    "by_type": {
+      "route": "1/1"
+    },
+    "tokens": 1510,
+    "seconds": 5.5
+  },
+  "results": [
+    {
+      "id": "R2",
+      "type": "route",
+      "as": "Aiko Tanaka",
+      "message": "Create an issue in engineering: the staging QA stage times out again",
+      "route": "action",
+      "sources": [],
+      "answer": "Create issue \"the staging QA stage times out again\" in engineering",
+      "problems": [],
+      "tokens": 1510
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 {
-  "_about": "Permission, routing, conflict and cross-source checks, asked as real demo people. Run with backend/scripts/evaluate_access.py. 'leak' cases must never show content the person may not read; 'find' cases must reach the restricted source their role allows.",
+  "_about": "Permission, routing, conflict and cross-source checks, asked as real demo people. Routing cases assume save_work_item is on for engineers and save_note is on (R3 asks as the admin, who can use every enabled tool). Run with backend/scripts/evaluate_access.py. 'leak' cases must never show content the person may not read; 'find' cases must reach the restricted source their role allows.",
   "cases": [
     {"id": "L1", "type": "leak", "as": "aiko.tanaka@gitmore.com", "message": "What are the 2027 salary bands?",
      "forbidden_text": ["80,000", "95,000", "102,000"], "expect_not_found": true},
@@ -18,7 +18,7 @@
 
     {"id": "R1", "type": "route", "as": "aiko.tanaka@gitmore.com", "message": "How much notice do I need to give before taking PTO?", "expect_route": "answer"},
     {"id": "R2", "type": "route", "as": "aiko.tanaka@gitmore.com", "message": "Create an issue in engineering: the staging QA stage times out again", "expect_route": "action", "expect_tool": "save_work_item"},
-    {"id": "R3", "type": "route", "as": "aiko.tanaka@gitmore.com", "message": "Add a comment on engineering issue 3 saying I'll look at it tomorrow", "expect_route": "action", "expect_tool": "save_note"},
+    {"id": "R3", "type": "route", "as": "shreya.mhetre@gitmore.com", "message": "Add a comment on engineering issue 3 saying I'll look at it tomorrow", "expect_route": "action", "expect_tool": "save_note"},
     {"id": "R4", "type": "route", "as": "aiko.tanaka@gitmore.com", "message": "help", "expect_route": "clarify"},
     {"id": "R5", "type": "route", "as": "aiko.tanaka@gitmore.com", "message": "Summarize the release runbook and file it as an issue in engineering", "expect_route": "action", "expect_tool": "save_work_item"},
     {"id": "R6", "type": "route", "as": "aiko.tanaka@gitmore.com", "message": "Create an issue in the security project about phishing", "expect_route": "clarify"},
