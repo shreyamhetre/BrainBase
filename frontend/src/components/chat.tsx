@@ -13,6 +13,7 @@ type Turn = {
   question: string;
   response?: AskResponse;
   error?: string;
+  streaming?: string; // the answer so far, while it streams in
 };
 
 const EXAMPLES = [
@@ -139,9 +140,13 @@ export function Chat({ conversationId }: { conversationId?: string }) {
     setBusy(true);
     try {
       const asked = generation.current;
-      const response = await api.ask(q, chatId);
+      // The answer streams in piece by piece; the full response (sources, actions) arrives at the end
+      const response = await api.askStream(q, chatId, (piece) => {
+        if (asked !== generation.current) return;
+        setTurns((t) => t.map((turn) => (turn.id === id ? { ...turn, streaming: (turn.streaming ?? "") + piece } : turn)));
+      });
       if (asked !== generation.current) return;  // the person started a new chat meanwhile
-      setTurns((t) => t.map((turn) => (turn.id === id ? { ...turn, response } : turn)));
+      setTurns((t) => t.map((turn) => (turn.id === id ? { ...turn, response, streaming: undefined } : turn)));
       if (!chatId) {
         setChatId(response.conversation_id);
         window.history.replaceState(null, "", `/c/${response.conversation_id}`);
@@ -216,10 +221,16 @@ export function Chat({ conversationId }: { conversationId?: string }) {
               </div>
 
               <div className="rounded-2xl border border-border bg-surface p-5">
-                {!turn.response && !turn.error && (
+                {!turn.response && !turn.error && !turn.streaming && (
                   <div className="flex items-center gap-2 text-sm text-muted">
                     <span className="h-2 w-2 animate-pulse rounded-full bg-brand" />
                     Searching your sources…
+                  </div>
+                )}
+                {!turn.response && !turn.error && turn.streaming && (
+                  <div>
+                    <AnswerText text={turn.streaming} onCite={() => {}} />
+                    <span className="inline-block h-4 w-1.5 animate-pulse rounded-sm bg-brand align-middle" aria-hidden="true" />
                   </div>
                 )}
                 {turn.error && <p className="text-sm text-red-600 dark:text-red-400">{turn.error}</p>}

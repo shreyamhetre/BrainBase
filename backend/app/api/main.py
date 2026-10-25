@@ -6,11 +6,15 @@ Run (from the project root):
 Then open http://localhost:8000/docs to try it in the browser.
 """
 
+import json
 import logging
+import queue
+import threading
 import time
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI
+from fastapi.responses import StreamingResponse
 from langfuse import get_client
 from pydantic import BaseModel, Field
 
@@ -104,19 +108,8 @@ def health() -> dict:
     return {"status": "ok"}
 
 
-@app.post("/ask", response_model=AskResponse)
-def ask_question(request: AskRequest, user: User = Depends(current_user)) -> AskResponse:
-    """One chat message: the router answers it, proposes an action to confirm, or asks back.
-
-    A plain def (not async): FastAPI runs it in a worker thread, so the GPU and database work
-    doesn't block the server. Roles come from the database for the logged-in user, never the request.
-    """
-    start = time.perf_counter()
-    with connect() as conn:
-        conversation_id = get_or_create(conn, user.id, request.conversation_id, request.question)
-        earlier = history(conn, conversation_id)  # read before saving this turn
-    reply = ask(request.question, user, earlier, conversation_id)
-    seconds = round(time.perf_counter() - start, 2)
+def _finish(request: AskRequest, user: User, conversation_id: str, reply, seconds: float) -> AskResponse:
+    """Turn a graph reply into the response, and record it in the usage log and the chat."""
     log_question(user.id, request.question, reply, seconds)
     cited = set(reply.answer.cited) if reply.answer else set()
     response = AskResponse(
@@ -148,3 +141,57 @@ def ask_question(request: AskRequest, user: User = Depends(current_user)) -> Ask
                   response.model_dump(include={"sources", "action", "question", "offer_tool", "prompt_tokens",
                                                "completion_tokens", "seconds"}))
     return response
+
+
+def _start(request: AskRequest, user: User) -> tuple[str, list[dict]]:
+    with connect() as conn:
+        conversation_id = get_or_create(conn, user.id, request.conversation_id, request.question)
+        return conversation_id, history(conn, conversation_id)  # history is read before saving this turn
+
+
+@app.post("/ask", response_model=AskResponse)
+def ask_question(request: AskRequest, user: User = Depends(current_user)) -> AskResponse:
+    """One chat message: the router answers it, proposes an action to confirm, or asks back.
+
+    A plain def (not async): FastAPI runs it in a worker thread, so the GPU and database work
+    doesn't block the server. Roles come from the database for the logged-in user, never the request.
+    """
+    start = time.perf_counter()
+    conversation_id, earlier = _start(request, user)
+    reply = ask(request.question, user, earlier, conversation_id)
+    return _finish(request, user, conversation_id, reply, round(time.perf_counter() - start, 2))
+
+
+def _event(name: str, data) -> str:
+    return f"event: {name}\ndata: {json.dumps(data)}\n\n"
+
+
+@app.post("/ask/stream")
+def ask_question_stream(request: AskRequest, user: User = Depends(current_user)) -> StreamingResponse:
+    """The same as /ask, streamed as server-sent events: "text" pieces of the answer while GPT writes it,
+    then "done" with the full response (sources, action, tokens), or "error"."""
+    start = time.perf_counter()
+    conversation_id, earlier = _start(request, user)
+    pieces: queue.Queue = queue.Queue()
+
+    def work() -> None:
+        try:
+            reply = ask(request.question, user, earlier, conversation_id, on_text=lambda t: pieces.put(("text", t)))
+            done = _finish(request, user, conversation_id, reply, round(time.perf_counter() - start, 2))
+            pieces.put(("done", done.model_dump(mode="json")))
+        except Exception as e:  # tell the browser instead of leaving it waiting
+            log.exception("streamed answer failed")
+            pieces.put(("error", {"detail": str(e) or "Something went wrong"}))
+
+    threading.Thread(target=work, name="ask-stream", daemon=True).start()
+
+    def events():
+        yield _event("start", {"conversation_id": conversation_id})
+        while True:
+            name, data = pieces.get()
+            yield _event(name, data)
+            if name in ("done", "error"):
+                return
+
+    return StreamingResponse(events(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})

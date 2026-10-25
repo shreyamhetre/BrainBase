@@ -7,7 +7,8 @@ Cases live in eval/access_questions.json:
 - conflict: the PTO answer gives the handbook rule and names the older Slack answer
 - cross:    the answer draws on more than one tool (issues and Slack)
 
-Two modes:
+Modes:
+    python backend/scripts/evaluate_access.py --quick            # 9 key cases (about 20k tokens)
     python backend/scripts/evaluate_access.py --retrieval-only   # leak and find cases, search only: no GPT calls, free
     python backend/scripts/evaluate_access.py                    # everything, through the real chat flow
 
@@ -27,6 +28,8 @@ from app.db.connection import connect
 from app.retrieval.retrieve import retrieve
 
 CASES = PROJECT_ROOT / "eval" / "access_questions.json"
+# One or two of each kind: leaks, finding, GitLab and Slack actions, chat, the guardrail, explain-or-do, the conflict
+QUICK = ["L1", "L2", "F1", "R2", "R8", "R10", "R12", "R14", "C1"]
 RESULTS = PROJECT_ROOT / "eval" / "results"
 NEW_SIGNUP = User("00000000-0000-0000-0000-000000000000", "new@gitmore.com", "New Sign-up", [], False, None, None)
 
@@ -104,11 +107,14 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--retrieval-only", action="store_true", help="leak and find cases through search only (no GPT calls)")
     parser.add_argument("--only", help="comma-separated case ids, e.g. L1,R2")
+    parser.add_argument("--quick", action="store_true", help=f"only the key cases: {', '.join(QUICK)}")
     args = parser.parse_args()
 
     cases = json.loads(CASES.read_text(encoding="utf-8"))["cases"]
     if args.only:
         cases = [c for c in cases if c["id"] in args.only.split(",")]
+    if args.quick:
+        cases = [c for c in cases if c["id"] in QUICK]
     if args.retrieval_only:
         cases = [c for c in cases if c["type"] in ("leak", "find")]
 
@@ -130,14 +136,15 @@ def main() -> None:
         t[0] += not r["problems"]
         t[1] += 1
     tokens = sum(r.get("tokens", 0) for r in results)
-    summary = {"mode": "retrieval-only" if args.retrieval_only else "full", "passed": passed, "total": len(results),
+    summary = {"mode": "retrieval-only" if args.retrieval_only else "quick" if args.quick else "full", "passed": passed, "total": len(results),
                "leaks": leaks, "by_type": {k: f"{a}/{b}" for k, (a, b) in by_type.items()}, "tokens": tokens,
                "seconds": round(time.perf_counter() - start, 1)}
     print(f"\n{passed}/{len(results)} passed · leaks: {leaks} · " + " · ".join(f"{k} {v}" for k, v in summary["by_type"].items())
           + (f" · {tokens} tokens" if tokens else ""))
 
     RESULTS.mkdir(parents=True, exist_ok=True)
-    out = RESULTS / f"access_{datetime.now():%Y-%m-%d_%H%M}{'_retrieval' if args.retrieval_only else ''}.json"
+    suffix = "_retrieval" if args.retrieval_only else "_quick" if args.quick else ""
+    out = RESULTS / f"access_{datetime.now():%Y-%m-%d_%H%M}{suffix}.json"
     out.write_text(json.dumps({"summary": summary, "results": results}, indent=2), encoding="utf-8")
     print(f"Saved {out.relative_to(PROJECT_ROOT)}")
 

@@ -207,85 +207,94 @@ Permission correctness is a critical system requirement and should be validated 
 
 ## Run locally
 
-Brainbase is a local development project. The repository contains a Docker Compose database setup, a Python backend, and a Next.js frontend.
+Brainbase is a local development project: Docker Compose for the database, a Python (FastAPI) backend, and a Next.js frontend. All commands run from the repository root unless noted.
 
 ### Prerequisites
 
 - Git
-- Docker Desktop with virtualization enabled
-- Python compatible with the backend dependencies
-- Node.js and npm compatible with the frontend
-- An OpenAI API key for answer generation
-- GitLab and Slack credentials if you want to test those connectors
+- Docker Desktop with virtualization enabled (on Windows: WSL2)
+- Python 3.11+
+- Node.js 20+ and npm
+- An OpenAI API key (or any OpenAI-compatible endpoint)
+- An NVIDIA GPU is recommended for the embedding and reranker models; CPU works, more slowly
+- GitLab and Slack credentials if you want to try the connectors and actions
 
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/<your-github-username>/brainbase.git
-cd brainbase
+git clone https://github.com/shreyamhetre/BrainBase.git
+cd BrainBase
 ```
 
 ### 2. Configure environment variables
 
 ```bash
-cp .env.example .env
+cp .env.example .env        # Windows: copy .env.example .env
 ```
 
-Open `.env` and fill in the required values. Use the repository's `.env.example` as the source of truth for variable names and required settings.
+Fill in `.env`. Each setting is explained in `.env.example`; at minimum set the database values, `OPENAI_API_KEY`, `JWT_SECRET`, `SECRETS_KEY` and the seed account passwords. `.env` is git-ignored: keep API keys, tokens and secrets out of Git.
 
-Keep API keys, connector tokens, JWT secrets, and encryption keys out of Git. Never commit your `.env` file.
-
-### 3. Start PostgreSQL and pgvector
+### 3. Start PostgreSQL with pgvector
 
 ```bash
 docker compose up -d
 ```
 
-Wait for the database health check to pass, then apply the schema using the repository's documented migration or initialization flow. The Compose setup uses PostgreSQL with pgvector.
-
 ### 4. Set up the Python backend
-
-Create and activate a virtual environment from the repository root:
 
 ```bash
 python -m venv .venv
+.venv\Scripts\activate                        # Windows
+source .venv/bin/activate                     # macOS/Linux
+pip install -r backend/requirements.txt       # NVIDIA GPU (CUDA)
+pip install -r backend/requirements-cpu.txt   # or: no NVIDIA GPU
+pip install -e backend                        # makes the backend's `app` package importable
+python -m app.db.migrate                      # create the tables
+python backend/scripts/seed_users.py          # the admin and 20 demo people
 ```
 
-Windows PowerShell:
+### 5. Index the GitLab handbook
 
-```powershell
-.\.venv\Scripts\Activate.ps1
-```
-
-macOS/Linux:
+The handbook is a large repository; only the pages and one year of history are fetched:
 
 ```bash
-source .venv/bin/activate
+git clone --filter=blob:none --no-checkout --shallow-since="1 year ago" https://gitlab.com/gitlab-com/content-sites/handbook.git data/raw/handbook
+git -C data/raw/handbook sparse-checkout set content/handbook assets/includes
+git -C data/raw/handbook checkout main
+python backend/scripts/handbook_dates.py      # each page's last-change date
+python -m app.ingestion.ingest_handbook       # chunk, embed and store (about 30,000 chunks)
 ```
 
-Install the backend dependencies using the appropriate requirements file for your environment. The project separates common dependencies from GPU and CPU-specific requirements; choose the matching setup described in the repository.
+The first run downloads the BGE-M3 and reranker models. Afterwards, set `HF_HUB_OFFLINE=1` in `.env` so they load from the local cache.
 
-Start the FastAPI application using the project's backend instructions. The API's interactive documentation is available at:
+### 6. Run GitMore
 
-`http://localhost:8000/docs`
+```bash
+uvicorn app.api.main:app --reload --reload-dir backend/app   # API on http://localhost:8000 (docs at /docs)
+```
 
-### 5. Set up the frontend
-
-In a separate terminal:
+In a second terminal:
 
 ```bash
 cd frontend
 npm install
-npm run dev
+npm run dev                                   # web app on http://localhost:3000
 ```
 
-Open the local URL printed by Next.js in your terminal.
+Log in with `ADMIN_EMAIL` and `ADMIN_PASSWORD`, or as a demo person such as `aiko.tanaka@gitmore.com` with `DEMO_USER_PASSWORD`.
 
-### 6. Connect data sources
+### 7. Connect Slack and GitLab (optional)
 
-Configure GitLab and Slack credentials through the application and map the relevant projects and channels to roles. The connector experience depends on valid credentials and the corresponding external app configuration.
+- **Connectors** (search): on the Connectors page, add Slack (bot token) and GitLab (URL, group, token), choose which roles can read each channel or project, then click Sync now. For the demo data, `python backend/scripts/seed_connectors.py` does the same from the tokens in `.env`.
+- **Actions** (MCP): on the MCP tools page, connect GitLab's official MCP server with a fine-grained personal access token (Duo permission "MCP tool: Execute"), and Slack's with a user token from your Slack app (with Slack MCP server access enabled for the app). Then turn on the actions people may use and choose their roles.
 
-**Note:** Exact environment variable names, migration commands, and backend startup commands can change as the project evolves. Follow the repository's scripts and environment template rather than copying credentials or configuration from screenshots.
+### 8. Tracing and checks (optional)
+
+```bash
+docker compose -f docker-compose.langfuse.yml up -d          # Langfuse on http://localhost:3100
+python -m unittest discover -s backend/tests                  # fast tests
+python backend/scripts/evaluate_access.py --retrieval-only    # permission check, no GPT calls
+```
 
 ## Design principles
 

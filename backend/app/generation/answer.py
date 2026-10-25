@@ -6,6 +6,7 @@ records the prompt, answer, tokens and cost of every call in Langfuse.
 """
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from functools import lru_cache
 
@@ -67,20 +68,32 @@ def format_sources(chunks: list[Candidate]) -> str:
     return "\n\n---\n\n".join(blocks)
 
 
-def generate_answer(question: str, chunks: list[Candidate]) -> Answer:
+def generate_answer(question: str, chunks: list[Candidate], on_text: Callable[[str], None] | None = None) -> Answer:
+    """Write the answer. With on_text, the answer is streamed: on_text gets each new piece as it arrives."""
     if not chunks:
+        if on_text:
+            on_text(NOT_FOUND)
         return Answer(NOT_FOUND, [], [], 0, 0)
 
-    response = get_client().chat.completions.create(
-        name="gpt-answer",  # label in Langfuse
-        model=LLM_MODEL,
-        temperature=0,
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": f"Sources:\n\n{format_sources(chunks)}\n\nQuestion: {question}"},
-        ],
-    )
-    text = response.choices[0].message.content.strip()
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": f"Sources:\n\n{format_sources(chunks)}\n\nQuestion: {question}"},
+    ]
+    if on_text is None:
+        response = get_client().chat.completions.create(name="gpt-answer", model=LLM_MODEL, temperature=0,
+                                                        messages=messages)
+        text, usage = response.choices[0].message.content.strip(), response.usage
+    else:
+        stream = get_client().chat.completions.create(name="gpt-answer", model=LLM_MODEL, temperature=0,
+                                                      messages=messages, stream=True,
+                                                      stream_options={"include_usage": True})
+        parts, usage = [], None
+        for chunk in stream:
+            if chunk.choices and chunk.choices[0].delta.content:
+                parts.append(chunk.choices[0].delta.content)
+                on_text(chunk.choices[0].delta.content)
+            if getattr(chunk, "usage", None):
+                usage = chunk.usage  # sent with the last chunk
+        text = "".join(parts).strip()
     cited = sorted({int(n) for n in re.findall(r"\[(\d+)\]", text) if 1 <= int(n) <= len(chunks)})
-    usage = response.usage
-    return Answer(text, chunks, cited, usage.prompt_tokens, usage.completion_tokens)
+    return Answer(text, chunks, cited, usage.prompt_tokens if usage else 0, usage.completion_tokens if usage else 0)

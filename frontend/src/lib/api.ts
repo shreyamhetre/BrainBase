@@ -217,12 +217,54 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 const json = (method: string, body: unknown): RequestInit => ({ method, body: JSON.stringify(body) });
 
+// /ask/stream sends server-sent events: "text" pieces while the answer is written, then "done" with
+// the full response (or "error"). onText gets each piece; the promise resolves with the full response.
+async function askStream(question: string, conversationId: string | undefined, onText: (piece: string) => void): Promise<AskResponse> {
+  const response = await fetch("/api/ask/stream", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify({ question, conversation_id: conversationId ?? null }),
+  });
+  if (!response.ok || !response.body) {
+    let message = response.statusText;
+    try {
+      const body = await response.json();
+      message = typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail);
+    } catch {
+      // keep the status text
+    }
+    throw new ApiError(response.status, message);
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let end;
+    while ((end = buffer.indexOf("\n\n")) >= 0) {
+      const block = buffer.slice(0, end);
+      buffer = buffer.slice(end + 2);
+      const name = block.match(/^event: (.*)$/m)?.[1];
+      const data = block.match(/^data: (.*)$/m)?.[1];
+      if (!name || data === undefined) continue;
+      if (name === "text") onText(JSON.parse(data));
+      if (name === "done") return JSON.parse(data) as AskResponse;
+      if (name === "error") throw new ApiError(500, JSON.parse(data).detail);
+    }
+  }
+  throw new ApiError(500, "The answer stopped before it finished. Please try again.");
+}
+
 export const api = {
   login: (email: string, password: string) => request<{ user: User }>("/auth/login", json("POST", { email, password })),
   signup: (name: string, email: string, password: string) =>
     request<{ user: User }>("/auth/signup", json("POST", { name, email, password })),
   logout: () => request<void>("/auth/logout", { method: "POST" }),
   me: () => request<User>("/auth/me"),
+  askStream,
   ask: (question: string, conversationId?: string) =>
     request<AskResponse>("/ask", json("POST", { question, conversation_id: conversationId ?? null })),
   conversations: () => request<ConversationSummary[]>("/conversations"),

@@ -51,6 +51,7 @@ class Reply:
 
 class State(TypedDict, total=False):
     message: str
+    on_text: object                   # optional: called with each piece of a streamed answer
     history: list[dict]
     user: User
     scope: Scope
@@ -79,7 +80,7 @@ def retrieve_node(state: State) -> State:
 @observe(name="answer")
 def answer_node(state: State) -> State:
     r = state["route"]
-    answer = generate_answer(r.question, state["chunks"])
+    answer = generate_answer(r.question, state["chunks"], state.get("on_text"))
     # "Couldn't find": the chunks it looked at didn't answer the question, so don't show them as sources
     sources = [] if NOT_FOUND.rstrip(".") in answer.text else answer.sources
     return {"reply": Reply(kind="answer", text=answer.text, answer=answer, sources=sources,
@@ -185,19 +186,20 @@ GRAPH = build_graph()
 
 
 @observe(name="message")
-def _ask(message: str, user: User, history: list[dict]) -> Reply:
-    reply = GRAPH.invoke({"message": message, "user": user, "history": history})["reply"]
+def _ask(message: str, user: User, history: list[dict], on_text=None) -> Reply:
+    reply = GRAPH.invoke({"message": message, "user": user, "history": history, "on_text": on_text})["reply"]
     langfuse = get_client()
     reply.trace_id = langfuse.get_current_trace_id()
     reply.trace_url = langfuse.get_trace_url(trace_id=reply.trace_id) if reply.trace_id else None
     return reply
 
 
-def ask(message: str, user: User, history: list[dict] | None = None, conversation_id: str | None = None) -> Reply:
+def ask(message: str, user: User, history: list[dict] | None = None, conversation_id: str | None = None,
+        on_text=None) -> Reply:
     """Handle one chat message for this person. Their roles come from the database, never the request.
     history holds the conversation's last few messages (from the database), for follow-ups."""
     with propagate_attributes(user_id=user.email, session_id=conversation_id, metadata={"roles": ",".join(user.roles)}):
-        return _ask(message, user, history or [])
+        return _ask(message, user, history or [], on_text)
 
 
 @observe(name="question")
