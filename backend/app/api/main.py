@@ -18,8 +18,8 @@ from fastapi.responses import StreamingResponse
 from langfuse import get_client
 from pydantic import BaseModel, Field
 
-from app.api import (account_routes, actions_routes, admin_routes, auth_routes, conversations_routes, mcp_routes,
-                     settings_routes)
+from app.api import (account_routes, actions_routes, admin_routes, auth_routes, conversations_routes,
+                     knowledge_routes, mcp_routes, settings_routes)
 from app.auth import User, current_user
 from app.config import SYNC_SCHEDULER
 from app.connectors.sync import Scheduler
@@ -61,6 +61,7 @@ app.include_router(settings_routes.router)
 app.include_router(mcp_routes.router)
 app.include_router(actions_routes.router)
 app.include_router(conversations_routes.router)
+app.include_router(knowledge_routes.router)
 
 
 class AskRequest(BaseModel):

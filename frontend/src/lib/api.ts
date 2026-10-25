@@ -52,7 +52,7 @@ export type Activity = {
 };
 
 export type Role = { name: string; description: string };
-export type AdminRole = Role & { users: number; sources: number; created_at: string };
+export type AdminRole = Role & { users: number; sources: number; created_at: string; can_add_documents: boolean };
 
 export type Connector = {
   id: string;
@@ -176,6 +176,23 @@ export type UsageDetail = {
   details: { chunks?: InspectedChunk[]; action?: { tool: string; server: string; summary: string; target?: string } };
 };
 
+export type SourceSummary = { source: string; name: string; documents: number; last_updated: string | null };
+
+export type LibraryDocument = {
+  id: number;
+  title: string;
+  kind: "pdf" | "word" | "text" | "gitlab_file" | string;
+  url: string;
+  file_name: string | null;
+  added_by: string | null;
+  added_at: string;
+  allowed_roles: string[];
+  chunks: number;
+  can_manage: boolean;
+};
+
+export type Library = { can_add: boolean; shareable_roles: string[]; sources: SourceSummary[]; documents: LibraryDocument[] };
+
 export type Source = {
   number: number;
   source: string;
@@ -254,6 +271,22 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 const json = (method: string, body: unknown): RequestInit => ({ method, body: JSON.stringify(body) });
 
+// File uploads go as multipart form data, so they skip request()'s JSON header.
+async function upload<T>(path: string, method: string, form: FormData): Promise<T> {
+  const response = await fetch(`/api${path}`, { method, body: form, credentials: "same-origin" });
+  if (!response.ok) {
+    let message = response.statusText;
+    try {
+      const body = await response.json();
+      message = typeof body.detail === "string" ? body.detail : body.detail?.[0]?.msg ?? JSON.stringify(body.detail);
+    } catch {
+      // keep the status text
+    }
+    throw new ApiError(response.status, message);
+  }
+  return response.json();
+}
+
 // /ask/stream sends server-sent events: "text" pieces while the answer is written, then "done" with
 // the full response (or "error"). onText gets each piece; the promise resolves with the full response.
 async function askStream(question: string, conversationId: string | undefined, onText: (piece: string) => void): Promise<AskResponse> {
@@ -302,6 +335,23 @@ export const api = {
   logout: () => request<void>("/auth/logout", { method: "POST" }),
   me: () => request<User>("/auth/me"),
   askStream,
+  library: () => request<Library>("/knowledge"),
+  uploadDocument: (file: File, allowedRoles: string[], title: string) => {
+    const form = new FormData();
+    form.append("file", file);
+    form.append("allowed_roles", allowedRoles.join(","));
+    form.append("title", title);
+    return upload<LibraryDocument>("/knowledge/upload", "POST", form);
+  },
+  linkDocument: (url: string, title: string) => request<LibraryDocument>("/knowledge/link", json("POST", { url, title: title || null })),
+  refreshDocument: (id: number) => request<LibraryDocument>(`/knowledge/${id}/refresh`, { method: "POST" }),
+  replaceDocument: (id: number, file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return upload<LibraryDocument>(`/knowledge/${id}/file`, "PUT", form);
+  },
+  removeDocument: (id: number) => request<void>(`/knowledge/${id}`, { method: "DELETE" }),
+  setRoleCanAdd: (name: string, canAdd: boolean) => request<AdminRole>(`/admin/roles/${name}`, json("PATCH", { can_add_documents: canAdd })),
   ask: (question: string, conversationId?: string) =>
     request<AskResponse>("/ask", json("POST", { question, conversation_id: conversationId ?? null })),
   conversations: () => request<ConversationSummary[]>("/conversations"),

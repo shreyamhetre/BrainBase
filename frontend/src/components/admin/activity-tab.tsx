@@ -17,6 +17,7 @@ const KINDS = {
   "access.": "Source access",
   "mcp.": "MCP tools",
   "action.": "Actions",
+  "knowledge.": "Knowledge library",
 } as const;
 
 const b = (text: string | null) => <strong className="font-medium text-foreground">{text ?? "someone"}</strong>;
@@ -26,6 +27,7 @@ function describe(a: Activity): ReactNode {
   const d = a.details as {
     before?: string[]; after?: string[]; value?: boolean; role?: string; note?: string | null;
     name?: string; kind?: string; source?: string; changed?: string[]; tool?: string; summary?: string; url?: string | null;
+    title?: string; roles?: string[];
   };
   const list = (roles?: string[]) => (roles?.length ? roles.join(", ") : "admins only");
   const self = a.actor === a.target;
@@ -85,6 +87,16 @@ function describe(a: Activity): ReactNode {
       return <>{b(a.actor)} turned off {b(d.name ?? "")}</>;
     case "mcp.tool_roles":
       return <>{b(a.actor)} set who can use {b(d.name ?? "")}: {list(d.after)}</>;
+    case "knowledge.added":
+      return <>{b(a.actor)} added the document {b(d.title ?? "")} for {list(d.roles)}</>;
+    case "knowledge.removed":
+      return <>{b(a.actor)} removed the document {b(d.title ?? "")}</>;
+    case "knowledge.replaced":
+      return <>{b(a.actor)} replaced the file of {b(d.title ?? "")}</>;
+    case "knowledge.refreshed":
+      return <>{b(a.actor)} refreshed {b(d.title ?? "")} from GitLab</>;
+    case "role.documents":
+      return <>{b(a.actor)} {d.value ? "let" : "stopped"} the {d.role} role {d.value ? "add" : "adding"} documents</>;
     case "connector.removed":
       return <>{b(a.actor)} removed the {b(d.name ?? "")} connector</>;
     case "connector.updated":

@@ -28,6 +28,8 @@ const SOURCE_LABEL: Record<string, string> = {
   slack: "Slack",
   gitlab_issue: "Issue",
   gitlab_wiki: "Wiki",
+  upload: "Document",
+  gitlab_file: "GitLab file",
 };
 
 function SourceCard({ source, turnId, highlighted }: { source: Source; turnId: number; highlighted: boolean }) {

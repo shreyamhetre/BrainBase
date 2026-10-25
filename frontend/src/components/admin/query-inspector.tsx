@@ -15,7 +15,8 @@ const ROUTE: Record<string, { label: string; tone: "neutral" | "brand" | "good" 
   chat: { label: "Small talk", tone: "neutral" },
 };
 
-const SOURCE: Record<string, string> = { handbook: "Handbook", slack: "Slack", gitlab_issue: "Issue", gitlab_wiki: "Wiki" };
+const SOURCE: Record<string, string> = { handbook: "Handbook", slack: "Slack", gitlab_issue: "Issue", gitlab_wiki: "Wiki",
+  upload: "Document", gitlab_file: "GitLab file" };
 
 const score = (n: number | null, digits = 3) => (n === null || n === undefined ? "—" : n.toFixed(digits));
 

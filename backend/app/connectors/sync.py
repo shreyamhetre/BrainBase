@@ -90,7 +90,7 @@ def _sync(conn, connector_id: str, kind: str, config: dict, token: str):
 
     access_ids = [c[0] for c in containers]
     with conn.transaction():
-        return sync_documents(conn, docs(), "access_id = ANY(%s)", (access_ids,))
+        return sync_documents(conn, docs(), "access_id = ANY(%s) AND added_by IS NULL", (access_ids,))  # never touch documents people added
 
 
 def due_connectors() -> list[str]:

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import { ErrorNote } from "@/components/admin/parts";
+import { ErrorNote, Switch } from "@/components/admin/parts";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Icon } from "@/components/icons";
 import { api, type AdminRole } from "@/lib/api";
@@ -15,6 +15,7 @@ export function RolesTab({ onChanged }: { onChanged: () => void }) {
   const [description, setDescription] = useState("");
   const [editing, setEditing] = useState<{ name: string; description: string } | null>(null);
   const [removing, setRemoving] = useState<AdminRole | null>(null);
+  const [toggling, setToggling] = useState<AdminRole | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -78,6 +79,10 @@ export function RolesTab({ onChanged }: { onChanged: () => void }) {
                 )}
               </div>
               <div className="flex items-center gap-4 text-xs text-muted">
+                <label className="flex items-center gap-2" title="People with this role can add PDF, Word and GitLab documents">
+                  <Switch on={r.can_add_documents} label={`${r.name} can add documents`} onToggle={() => setToggling(r)} />
+                  Can add documents
+                </label>
                 <span className="tabular-nums">{r.users} {r.users === 1 ? "person" : "people"}</span>
                 <span className="tabular-nums">{r.sources} {r.sources === 1 ? "source" : "sources"}</span>
                 <button onClick={() => setRemoving(r)} disabled={inUse}
@@ -109,6 +114,18 @@ export function RolesTab({ onChanged }: { onChanged: () => void }) {
             disabled={name.trim().length < 2}>Add role</button>
         </div>
       </form>
+
+      {toggling && (
+        <ConfirmDialog
+          title={toggling.can_add_documents ? `Stop ${toggling.name} adding documents?` : `Let ${toggling.name} add documents?`}
+          yesLabel={toggling.can_add_documents ? "Stop" : "Allow"} noLabel="Cancel" tone={toggling.can_add_documents ? "danger" : "brand"}
+          onYes={() => { const r = toggling; setToggling(null); run(() => api.setRoleCanAdd(r.name, !r.can_add_documents)); }}
+          onNo={() => setToggling(null)}>
+          {toggling.can_add_documents
+            ? "Documents they already added stay. They can still manage their own."
+            : "They can upload PDF and Word files and link GitLab files, shared with everyone or with roles they hold."}
+        </ConfirmDialog>
+      )}
 
       {removing && (
         <ConfirmDialog title={`Remove the ${removing.name} role?`} yesLabel="Remove role" noLabel="Cancel" tone="danger"

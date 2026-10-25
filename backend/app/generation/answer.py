@@ -19,7 +19,7 @@ from app.retrieval.search import Candidate
 NOT_FOUND = "I couldn't find this in the sources you can access."
 
 SOURCE_TYPES = {"handbook": "Handbook page", "slack": "Slack thread", "gitlab_issue": "GitLab issue",
-                "gitlab_wiki": "Wiki page"}
+                "gitlab_wiki": "Wiki page", "upload": "Company document", "gitlab_file": "GitLab file"}
 
 SYSTEM_PROMPT = f"""You are GitMore, an unofficial assistant that answers questions about GitLab \
 using excerpts from the company's sources: the public handbook, Slack threads, GitLab issues and wiki pages.

@@ -117,6 +117,7 @@ function Sidebar({ onNavigate }: { onNavigate: () => void }) {
 
       <nav className="space-y-0.5" aria-label="Main">
         <NavLink href="/" icon="chat" label="Chat" active={path === "/" || path.startsWith("/c/")} onNavigate={newChat} />
+        <NavLink href="/knowledge" icon="book" label="Knowledge" active={path === "/knowledge"} onNavigate={onNavigate} />
         <NavLink href="/connectors" icon="plug" label="Connectors" active={path === "/connectors"} onNavigate={onNavigate} />
         <NavLink href="/mcp" icon="tool" label="MCP tools" active={path === "/mcp"} onNavigate={onNavigate} />
       </nav>

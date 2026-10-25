@@ -36,6 +36,7 @@ class RoleAdminOut(RoleOut):
     users: int
     sources: int
     created_at: datetime
+    can_add_documents: bool
 
 
 class RoleIn(BaseModel):
@@ -44,7 +45,8 @@ class RoleIn(BaseModel):
 
 
 class RoleEdit(BaseModel):
-    description: str = Field(max_length=200)
+    description: str | None = Field(default=None, max_length=200)
+    can_add_documents: bool | None = None
 
 
 @router.get("/roles", response_model=list[RoleOut])
@@ -58,7 +60,7 @@ ROLE_ADMIN_SQL = """
 SELECT r.name, r.description,
        (SELECT count(*) FROM users u WHERE r.name = ANY(u.roles) AND NOT u.is_admin),
        (SELECT count(*) FROM source_access s WHERE r.name = ANY(s.allowed_roles)),
-       r.created_at
+       r.created_at, r.can_add_documents
 FROM roles r
 """
 
@@ -89,9 +91,13 @@ def add_role(body: RoleIn, admin: User = Depends(admin_user)) -> RoleAdminOut:
 @router.patch("/admin/roles/{name}", response_model=RoleAdminOut)
 def edit_role(name: str, body: RoleEdit, admin: User = Depends(admin_user)) -> RoleAdminOut:
     with connect() as conn:
-        if not conn.execute("UPDATE roles SET description = %s WHERE name = %s RETURNING name",
-                            (body.description.strip(), name)).fetchone():
+        if not conn.execute("SELECT 1 FROM roles WHERE name = %s", (name,)).fetchone():
             raise HTTPException(status.HTTP_404_NOT_FOUND, "No such role")
+        if body.description is not None:
+            conn.execute("UPDATE roles SET description = %s WHERE name = %s", (body.description.strip(), name))
+        if body.can_add_documents is not None:
+            conn.execute("UPDATE roles SET can_add_documents = %s WHERE name = %s", (body.can_add_documents, name))
+            record(conn, admin.id, "role.documents", role=name, value=body.can_add_documents)
         return _role_admin(conn.execute(f"{ROLE_ADMIN_SQL} WHERE r.name = %s", (name,)).fetchone())
 
 
