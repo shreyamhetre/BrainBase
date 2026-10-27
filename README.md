@@ -57,7 +57,7 @@ The result is one foundation that can power many company brains, each shaped by 
 
 GitMore shows what a BrainBase deployment looks like for a real-world style company. It brings together the public GitLab handbook, GitLab projects, issues and wiki pages, Slack conversations, and documents people upload, behind one chat and one admin console. Synthetic internal content (draft salary bands, a managers-only restructuring plan, a security incident, an outdated Slack answer) is included on purpose, so permissions and conflicting answers can be demonstrated safely.
 
-The brand follows its subject: GitLab's orange and navy, a fox-inspired mark connected to a network of sources, and the promise *"Your company's knowledge, in one place."* Every page, from the chat to the admin console, uses the same orange-and-white design in light and dark mode.
+**GitMore is an independent project built around GitLab's public handbook and tools. It is not an official GitLab product.**
 
 ## What GitMore does
 
