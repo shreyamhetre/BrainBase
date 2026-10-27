@@ -271,6 +271,12 @@ Reranking was the biggest single improvement: the expected page reached the top 
 
 These sets are small and hand-built. They are a baseline to catch regressions, not a benchmark.
 
+### Tracing with Langfuse
+
+The scripts score GitMore on fixed questions; [Langfuse](https://langfuse.com) shows how it behaves on every real message. Each message becomes one trace with its steps in order: the router, the search, each Jev check, the question rewrite when there is one, and the answer, each with its tokens, cost and latency. Traces are grouped into sessions (one per chat) and labelled with the person who asked, so you can follow a conversation or see usage per person.
+
+Together they close the loop: when an evaluation case fails, its trace shows which step went wrong, and when a real answer looks off in Langfuse or in the query inspector, that question can become a new evaluation case.
+
 ## Run locally
 
 BrainBase is meant to be run by each company for itself: clone it, run it on your own machine or server, connect your own tools, and set up your roles and access. GitMore's GitLab handbook, demo Slack workspace and demo GitLab group are only the example configuration.
