@@ -1,6 +1,9 @@
 <div align="center">
 
-# BrainBase
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/brainbase-wordmark-dark.svg">
+  <img src="assets/brainbase-wordmark-light.svg" alt="BrainBase" width="440">
+</picture>
 
 **A configurable foundation for company intelligence.**
 
@@ -46,7 +49,7 @@ The result is one foundation that can power many company brains, each shaped by 
 
 <div align="center">
 
-<img src="assets/gitmore-logo.png" alt="GitMore: Your company's knowledge, in one place." width="520">
+<img src="assets/gitmore-logo.png" alt="GitMore: Your company's knowledge, in one place." width="520" height="200">
 
 </div>
 
@@ -221,12 +224,16 @@ Screenshots from GitMore running locally with the demo data.
 
 ### Try it yourself
 
-1. Log in as an engineer (`aiko.tanaka@gitmore.com`) and ask how much notice PTO needs. Open the cited sources.
-2. Ask for the draft 2027 salary bands. Then log in as HR (`carlos.mendes@gitmore.com`) and ask again.
-3. As the admin, open Admin console → Usage and click both questions to compare them in the query inspector.
-4. Ask GitMore to create an issue in the engineering project, edit the draft, then cancel or confirm it.
-5. Add a PDF in Knowledge, share it with one role, and ask about it as someone with and without that role.
-6. Change the answer length or evidence threshold in Search & answers and ask again.
+GitMore runs on your own machine (see [Run locally](#run-locally)). A typical first session:
+
+1. **As the admin**, connect Slack and GitLab on the Connectors page and choose which roles can read each channel and project.
+2. **As a new person**, sign up with a company email address. New accounts can read the public handbook only, so ask a handbook question and open the cited sources.
+3. Ask about something restricted, such as the draft salary bands: the answer is "I couldn't find this in the sources you can access".
+4. From your profile, request a role (for example HR) with a reason.
+5. **As the admin**, approve the request in Admin console → Access requests. Ask the same question again: the answer now comes with citations.
+6. In Admin console → Usage, open both questions in the query inspector to see what changed: the chunks found and the evidence gate's decision.
+7. Ask GitMore to create an issue or post in a Slack channel you can read, edit the draft, then confirm or cancel it.
+8. Add a PDF in Knowledge, share it with one role, and compare answers for people with and without that role.
 
 > **Demo environment:** GitMore is an unofficial learning and reference implementation. GitLab handbook content is public; internal records are synthetic and exist to demonstrate permissions. Do not put real secrets or private company data into a demo.
 
@@ -265,6 +272,8 @@ Reranking was the biggest single improvement: the expected page reached the top 
 These sets are small and hand-built. They are a baseline to catch regressions, not a benchmark.
 
 ## Run locally
+
+BrainBase is meant to be run by each company for itself: clone it, run it on your own machine or server, connect your own tools, and set up your roles and access. GitMore's GitLab handbook, demo Slack workspace and demo GitLab group are only the example configuration.
 
 ### Prerequisites
 
@@ -341,7 +350,7 @@ npm install
 npm run dev                                   # web app on http://localhost:3000
 ```
 
-Log in with `ADMIN_EMAIL` and `ADMIN_PASSWORD`, or as a demo person such as `aiko.tanaka@gitmore.com` with `DEMO_USER_PASSWORD`.
+Log in as the admin with `ADMIN_EMAIL` and `ADMIN_PASSWORD`. Everyone else signs up with a company email address (`ALLOWED_EMAIL_DOMAIN`) and starts with handbook access only; the admin assigns roles in the admin console or approves the roles people request. The seed script also creates demo people for testing permissions.
 
 ### 7. Connect Slack and GitLab (optional)
 

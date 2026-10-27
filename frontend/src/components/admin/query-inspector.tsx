@@ -93,7 +93,8 @@ export function QueryInspector({ id, onClose }: { id: number; onClose: () => voi
   }, [id, onClose]);
 
   const chunks = detail?.details.chunks ?? [];
-  const route = detail?.route ? ROUTE[detail.route] : null;
+  const route = detail?.route === "answer" && !detail.found ? { label: "Couldn't find", tone: "warn" as const }
+    : detail?.route ? ROUTE[detail.route] : null;
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onClick={onClose}>
