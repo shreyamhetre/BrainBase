@@ -157,6 +157,36 @@ export type InspectedChunk = {
   preview: string;
 };
 
+export type RagSettings = {
+  candidates_per_search: number;
+  rerank_pool: number;
+  final_k: number;
+  llm_model: string;
+  price_input_per_m: number;
+  price_output_per_m: number;
+  answer_length: string;
+  handbook_core_sections: string[];
+  handbook_max_age_days: number;
+};
+
+export type HandbookJob = {
+  state: "never" | "running" | "done" | "error";
+  step?: string | null;
+  started_at?: string | null;
+  finished_at?: string | null;
+  error?: string | null;
+  stats?: { pages: number; embedded_pages: number; chunks: number; unchanged: number; empty: number; deleted: number; minutes: number } | null;
+};
+
+export type RagSettingsResponse = {
+  settings: RagSettings;
+  defaults: RagSettings;
+  limits: Partial<Record<keyof RagSettings, [number, number]>>;
+  answer_lengths: Record<string, string>;
+  sections: { name: string; pages: number; indexed: number }[];
+  handbook: { indexed_pages: number; job: HandbookJob };
+};
+
 export type UsageDetail = {
   id: number;
   user: string | null;
@@ -402,5 +432,8 @@ export const api = {
     request<AccessRequest>(`/admin/requests/${id}/decision`, json("POST", { approve, note })),
   usage: () => request<Usage>("/admin/usage"),
   usageDetail: (id: number) => request<UsageDetail>(`/admin/usage/${id}`),
+  ragSettings: () => request<RagSettingsResponse>("/admin/rag-settings"),
+  saveRagSettings: (changes: Partial<RagSettings>) => request<RagSettingsResponse>("/admin/rag-settings", json("PUT", changes)),
+  refreshHandbook: () => request<{ started: boolean }>("/admin/handbook/refresh", { method: "POST" }),
   activity: (limit = 100) => request<Activity[]>(`/admin/activity?limit=${limit}`),
 };

@@ -79,12 +79,17 @@ def design_doc_status(rel_path: str) -> str | None:
 
 
 def selected_pages() -> list[Path]:
-    """All handbook pages that pass the selection rules, in a stable order."""
+    """All handbook pages that pass the selection rules (from the RAG settings), in a stable order."""
+    from datetime import timedelta
+
+    from app import rag_settings
+    settings = rag_settings.get()
+    core, max_age = set(settings.handbook_core_sections), timedelta(days=settings.handbook_max_age_days)
     snapshot = snapshot_date()
     pages = []
     for path in sorted(CONTENT.rglob("*.md")):
         rel = path.relative_to(CONTENT).as_posix()
-        if should_ingest(rel, last_changed(rel), design_doc_status(rel), snapshot):
+        if should_ingest(rel, last_changed(rel), design_doc_status(rel), snapshot, core, max_age):
             pages.append(path)
     return pages
 

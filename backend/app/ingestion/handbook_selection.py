@@ -24,7 +24,8 @@ DESIGN_DOC_STATUSES_ALWAYS_KEPT = {"implemented", "ongoing", "accepted", "reject
 
 
 def should_ingest(
-    rel_path: str, last_changed: datetime | None, design_status: str | None, snapshot: datetime
+    rel_path: str, last_changed: datetime | None, design_status: str | None, snapshot: datetime,
+    core_sections: set[str] | None = None, max_age: timedelta | None = None,
 ) -> bool:
     """rel_path is relative to content/handbook/, e.g. "total-rewards/benefits/_index.md".
 
@@ -32,10 +33,11 @@ def should_ingest(
     design_status is the status of the design document the page belongs to, if any.
     snapshot is the date of the newest change in the clone.
     """
-    recent = last_changed is not None and snapshot - last_changed <= MAX_AGE
+    core = CORE_SECTIONS if core_sections is None else core_sections
+    recent = last_changed is not None and snapshot - last_changed <= (max_age or MAX_AGE)
 
     if rel_path.startswith(DESIGN_DOCS_PREFIX):
         return recent or (design_status or "").lower() in DESIGN_DOC_STATUSES_ALWAYS_KEPT
 
     section = rel_path.split("/", 1)[0] if "/" in rel_path else ""
-    return recent or section in CORE_SECTIONS
+    return recent or section in core

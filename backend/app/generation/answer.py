@@ -12,7 +12,8 @@ from functools import lru_cache
 
 from langfuse.openai import OpenAI
 
-from app.config import LLM_BASE_URL, LLM_MODEL, OPENAI_API_KEY
+from app import rag_settings
+from app.config import LLM_BASE_URL, OPENAI_API_KEY
 from app.retrieval.search import Candidate
 
 # Says nothing about restricted content: the user can't tell whether something exists that they may not read.
@@ -36,8 +37,7 @@ is the current rule." Never merge the two into one answer.
 - If two sources of the same kind disagree, prefer the most recently updated one and mention the difference.
 - If a source is a design document with status proposed or rejected, say so; it is not \
 how GitLab works today.
-- If the answer differs by country or team, give the general rule first, then the differences.
-- Be concise: a short paragraph or a few bullet points."""
+- If the answer differs by country or team, give the general rule first, then the differences."""
 
 
 @dataclass
@@ -75,16 +75,17 @@ def generate_answer(question: str, chunks: list[Candidate], on_text: Callable[[s
             on_text(NOT_FOUND)
         return Answer(NOT_FOUND, [], [], 0, 0)
 
+    settings = rag_settings.get()
     messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "system", "content": f"{SYSTEM_PROMPT}\n- {rag_settings.ANSWER_LENGTHS[settings.answer_length]}"},
         {"role": "user", "content": f"Sources:\n\n{format_sources(chunks)}\n\nQuestion: {question}"},
     ]
     if on_text is None:
-        response = get_client().chat.completions.create(name="gpt-answer", model=LLM_MODEL, temperature=0,
+        response = get_client().chat.completions.create(name="gpt-answer", model=settings.llm_model, temperature=0,
                                                         messages=messages)
         text, usage = response.choices[0].message.content.strip(), response.usage
     else:
-        stream = get_client().chat.completions.create(name="gpt-answer", model=LLM_MODEL, temperature=0,
+        stream = get_client().chat.completions.create(name="gpt-answer", model=settings.llm_model, temperature=0,
                                                       messages=messages, stream=True,
                                                       stream_options={"include_usage": True})
         parts, usage = [], None

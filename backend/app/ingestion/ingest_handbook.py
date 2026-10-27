@@ -80,19 +80,15 @@ def flush(conn: psycopg.Connection, pending: list[tuple[HandbookPage, str, list[
     return len(texts)
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--sections", help="comma-separated top-level sections, e.g. people-group,hiring")
-    parser.add_argument("--limit", type=int, help="only the first N selected pages")
-    args = parser.parse_args()
-
+def run(sections: str | None = None, limit: int | None = None, log=print) -> dict:
+    """Ingest the selected pages; returns counts. Called by the script below and by the app's Refresh handbook."""
     paths = selected_pages()
-    if args.sections:
-        wanted = set(args.sections.split(","))
+    if sections:
+        wanted = set(sections.split(","))
         paths = [p for p in paths if p.relative_to(CONTENT).parts[0] in wanted]
-    if args.limit:
-        paths = paths[: args.limit]
-    full_run = not args.sections and not args.limit
+    if limit:
+        paths = paths[:limit]
+    full_run = not sections and not limit
 
     start = time.perf_counter()
     stats = {"embedded_pages": 0, "chunks": 0, "unchanged": 0, "empty": 0, "deleted": 0}
@@ -103,7 +99,7 @@ def main() -> None:
             "SELECT external_id, content_hash FROM documents WHERE source = %s", (SOURCE,)
         ).fetchall())
 
-        print(f"Pages to check: {len(paths)}  (already in database: {len(known)})")
+        log(f"Pages to check: {len(paths)}  (already in database: {len(known)})")
         pending, pending_chunks = [], 0
         for n, path in enumerate(paths, 1):
             page = load_page(path)
@@ -123,7 +119,7 @@ def main() -> None:
                 stats["embedded_pages"] += len(pending)
                 pending, pending_chunks = [], 0
                 rate = stats["chunks"] / (time.perf_counter() - start)
-                print(f"  {n}/{len(paths)} pages checked, {stats['chunks']} chunks stored ({rate:.0f} chunks/s)")
+                log(f"  {n}/{len(paths)} pages checked, {stats['chunks']} chunks stored ({rate:.0f} chunks/s)")
 
         if pending:
             stats["chunks"] += flush(conn, pending)
@@ -138,8 +134,18 @@ def main() -> None:
                 )
             stats["deleted"] = len(gone)
 
-    elapsed = time.perf_counter() - start
-    print(f"\nDone in {elapsed / 60:.1f} min: {stats['embedded_pages']} pages embedded "
+    stats["pages"] = len(paths)
+    stats["minutes"] = round((time.perf_counter() - start) / 60, 1)
+    return stats
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--sections", help="comma-separated top-level sections, e.g. people-group,hiring")
+    parser.add_argument("--limit", type=int, help="only the first N selected pages")
+    args = parser.parse_args()
+    stats = run(args.sections, args.limit)
+    print(f"\nDone in {stats['minutes']} min: {stats['embedded_pages']} pages embedded "
           f"({stats['chunks']} chunks), {stats['unchanged']} unchanged, "
           f"{stats['empty']} empty, {stats['deleted']} deleted")
 

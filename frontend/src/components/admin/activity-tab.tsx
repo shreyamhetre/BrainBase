@@ -18,9 +18,13 @@ const KINDS = {
   "mcp.": "MCP tools",
   "action.": "Actions",
   "knowledge.": "Knowledge library",
+  "rag.": "Search & answers",
+  "handbook.": "Handbook refresh",
 } as const;
 
 const b = (text: string | null) => <strong className="font-medium text-foreground">{text ?? "someone"}</strong>;
+
+const fmt = (v: unknown) => (Array.isArray(v) ? (v.length ? v.join(", ") : "none") : String(v));
 
 // One plain sentence per log entry.
 function describe(a: Activity): ReactNode {
@@ -29,6 +33,7 @@ function describe(a: Activity): ReactNode {
     name?: string; kind?: string; source?: string; changed?: string[]; tool?: string; summary?: string; url?: string | null;
     title?: string; roles?: string[];
   };
+  const settingChanges = (a.details.changed ?? {}) as Record<string, { before: unknown; after: unknown }>;
   const list = (roles?: string[]) => (roles?.length ? roles.join(", ") : "admins only");
   const self = a.actor === a.target;
   switch (a.action) {
@@ -101,6 +106,15 @@ function describe(a: Activity): ReactNode {
       return <>{b(a.actor)} removed the {b(d.name ?? "")} connector</>;
     case "connector.updated":
       return <>{b(a.actor)} changed {(d.changed ?? []).join(", ").replaceAll("_", " ")} on {b(d.name ?? "")}</>;
+    case "rag.settings":
+      return (
+        <>
+          {b(a.actor)} changed search &amp; answer settings:{" "}
+          {Object.entries(settingChanges).map(([k, v]) => `${k.replaceAll("_", " ")} ${fmt(v.before)} → ${fmt(v.after)}`).join("; ")}
+        </>
+      );
+    case "handbook.refresh":
+      return <>{b(a.actor)} started a handbook refresh</>;
     case "access.changed":
       return <>{b(a.actor)} set who can read {b(d.source ?? "")}: {list(d.before)} → {list(d.after)}</>;
     default:

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { ActivityTab } from "@/components/admin/activity-tab";
 import { ErrorNote } from "@/components/admin/parts";
+import { RagTab } from "@/components/admin/rag-tab";
 import { RequestsTab } from "@/components/admin/requests-tab";
 import { RolesTab } from "@/components/admin/roles-tab";
 import { UsageTab } from "@/components/admin/usage-tab";
@@ -18,6 +19,7 @@ const TABS = [
   { id: "users", label: "Users and roles", icon: "users" },
   { id: "requests", label: "Access requests", icon: "inbox" },
   { id: "roles", label: "Roles", icon: "key" },
+  { id: "rag", label: "Search & answers", icon: "settings" },
   { id: "usage", label: "Usage", icon: "clock" },
   { id: "activity", label: "Activity log", icon: "activity" },
 ] as const satisfies readonly { id: string; label: string; icon: IconName }[];
@@ -181,6 +183,7 @@ export default function AdminPage() {
         {tab === "users" && <UsersTab users={users} roles={roles} meId={me?.id} onSaved={savedUser} />}
         {tab === "requests" && <RequestsTab pending={pending} decided={decided} onDecided={decidedRequest} />}
         {tab === "roles" && <RolesTab onChanged={() => { api.roles().then((r) => setRoles(r.map((role) => role.name))); refresh(); }} />}
+        {tab === "rag" && <RagTab />}
         {tab === "usage" && <UsageTab />}
         {tab === "activity" && <ActivityTab items={activity} />}
       </div>

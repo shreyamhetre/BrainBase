@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
 from app.actions import Scope
-from app.config import LLM_MODEL
+from app import rag_settings
 from app.generation.answer import get_client
 
 ROUTES = ("chat", "knowledge", "action", "choose", "clarify")
@@ -125,7 +125,7 @@ def _ask_router(message: str, scope: Scope, history: list[dict] | None, person: 
     now = datetime.now(timezone.utc)
     response = get_client().chat.completions.create(
         name="router",
-        model=LLM_MODEL,
+        model=rag_settings.get().llm_model,
         temperature=0,
         response_format={"type": "json_object"},
         messages=[
@@ -215,7 +215,7 @@ Reply with JSON only: {"arguments": {...}, "summary": "..."}."""
 def draft_with_context(message: str, route_: Route, sources_text: str) -> Route:
     response = get_client().chat.completions.create(
         name="draft-action",
-        model=LLM_MODEL,
+        model=rag_settings.get().llm_model,
         temperature=0,
         response_format={"type": "json_object"},
         messages=[
