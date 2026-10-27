@@ -1,27 +1,12 @@
 <div align="center">
 
-<img src="assets/brainbase-hero.svg" alt="Brainbase — A configurable foundation for company intelligence" width="100%">
+# BrainBase
 
-<br/>
+**A configurable foundation for company intelligence.**
 
-<p>
-  <strong>A configurable foundation for company intelligence.</strong><br>
-  Connect company knowledge. Retrieve with evidence. Respect permissions. Enable AI-powered workflows.
-</p>
+Connect company knowledge. Retrieve with evidence. Respect permissions. Enable AI-powered workflows.
 
-<p>
-  <a href="#meet-gitmore">Explore GitMore</a> ·
-  <a href="#architecture">Architecture</a> ·
-  <a href="#run-locally">Run locally</a>
-</p>
-
-<p>
-  <img src="https://img.shields.io/badge/status-in%20development-orange?style=flat-square" alt="Project status: in development">
-  <img src="https://img.shields.io/badge/Python-FastAPI-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python and FastAPI">
-  <img src="https://img.shields.io/badge/Orchestration-LangGraph-1C3C3C?style=flat-square" alt="LangGraph">
-  <img src="https://img.shields.io/badge/Database-PostgreSQL%20%2B%20pgvector-4169E1?style=flat-square&logo=postgresql&logoColor=white" alt="PostgreSQL and pgvector">
-  <img src="https://img.shields.io/badge/UI-Next.js-black?style=flat-square&logo=next.js" alt="Next.js">
-</p>
+[Meet GitMore](#meet-gitmore) · [Architecture](#architecture) · [Demo](#demo) · [Evaluation](#evaluation) · [Run locally](#run-locally)
 
 </div>
 
@@ -35,79 +20,158 @@ People waste time searching, repeat questions, and struggle to tell which source
 
 ## The idea
 
-**Brainbase is a configurable foundation for building company-specific AI brains.**
+**BrainBase is a configurable foundation for building company-specific AI brains.**
 
-Rather than hardcoding one assistant for one organization, Brainbase is designed around configurable sources, indexing and retrieval, model settings, workflow routing, roles, access mappings, and external tools.
+Most internal assistants are built once, for one company, with its sources, rules and prompts written into the code. Every new team, tool or permission rule then means another code change. BrainBase takes the opposite approach: the pipeline is fixed and well tested, and everything that differs between companies is configuration, managed by admins in the app.
 
-- **Connect:** bring knowledge together from organizational tools.
-- **Retrieve:** combine semantic and keyword search, then rerank evidence.
-- **Answer:** generate grounded responses with citations.
-- **Respect access:** filter restricted content before it reaches the language model.
-- **Act:** route requests to tools through controlled, auditable workflows.
-- **Measure:** inspect traces and evaluate retrieval and answer quality.
+**What stays the same for every company**
 
-The aim is bigger than a chatbot: one configurable foundation that can support different company-brain implementations.
+- **Ingestion:** content is fetched, cleaned, split into chunks along its headings, embedded, and stored with its metadata and the roles allowed to read it. Unchanged content is never processed twice.
+- **Retrieval:** vector and keyword search run together, their results are fused and reranked, and access rules are applied inside the search itself, so restricted text never reaches the model.
+- **Evidence before answers:** a separate model checks whether the sources actually contain the answer. If not, the question is rewritten and searched once more; if there is still nothing, the person is told so instead of getting a guess.
+- **Grounded answers:** every claim is cited, newer official policy wins over older chat messages, and conflicts are named rather than merged.
+- **Controlled actions:** requests like "create an issue" or "post this in Slack" become a draft the person reviews, rechecked and recorded when they confirm.
+- **Measurement:** every message is traced, logged with its cost, and inspectable; evaluation scripts check retrieval quality and that no one sees what they shouldn't.
+
+**What each company configures**
+
+- **Sources:** which tools to connect (handbooks, Slack, GitLab, uploaded documents) and how often they sync.
+- **People and access:** roles, who holds them, and which roles can read each channel, project or document. New sources are closed until someone maps them.
+- **Tools:** which actions are available, through which MCP servers, and for which roles.
+- **Search and answers:** how deep to search, which model answers, how long answers are, and how strict the evidence gate is.
+
+The result is one foundation that can power many company brains, each shaped by configuration rather than custom code.
 
 ## Meet GitMore
 
-<a id="meet-gitmore"></a>
-
-**GitMore is Brainbase's reference implementation**: a company brain for the GitLab ecosystem.
-
-It demonstrates how a company-specific experience can bring together GitLab projects and issues, Slack conversations, and company documentation through one interface. Synthetic internal content is used to demonstrate confidential information, role restrictions, and conflicting answers.
-
 <div align="center">
 
-<img src="assets/brainbase-gitmore-flow.svg" alt="Brainbase foundation powering GitMore with GitLab, Slack and company documentation" width="100%">
+<img src="assets/gitmore-logo.png" alt="GitMore: Your company's knowledge, in one place." width="520">
 
 </div>
 
-### What GitMore demonstrates
+**GitMore is BrainBase's reference implementation: a company brain for the GitLab ecosystem.**
 
-- A chat interface with clickable source citations.
-- Handbook ingestion, hybrid retrieval, reciprocal rank fusion, reranking, and a Jev evidence gate.
-- User authentication and database-backed roles.
-- Source-level access mappings for GitLab projects and Slack channels.
-- Configurable connector settings and encrypted connector credentials.
-- Manual and scheduled synchronization, plus event-handling infrastructure.
-- An admin console for users, roles, access requests, connectors, and activity logs.
-- Tracing and a repeatable evaluation script for retrieval and answer quality.
+GitMore shows what a BrainBase deployment looks like for a real-world style company. It brings together the public GitLab handbook, GitLab projects, issues and wiki pages, Slack conversations, and documents people upload, behind one chat and one admin console. Synthetic internal content (draft salary bands, a managers-only restructuring plan, a security incident, an outdated Slack answer) is included on purpose, so permissions and conflicting answers can be demonstrated safely.
 
-GitMore is an example configuration—not the boundary of Brainbase's intended scope.
+The brand follows its subject: GitLab's orange and navy, a fox-inspired mark connected to a network of sources, and the promise *"Your company's knowledge, in one place."* Every page, from the chat to the admin console, uses the same orange-and-white design in light and dark mode.
+
+## What GitMore does
+
+**Ask and get cited answers**
+- Chat with streamed answers and clickable `[n]` citations that open the original page, thread, issue or file.
+- Follow-up questions understood in context; saved conversations in the sidebar.
+- Small talk handled politely; questions about the company are always answered from sources, never from memory.
+- Older or conflicting sources are named ("an older Slack thread said…") instead of silently merged.
+
+**See only what you're allowed to see**
+- Roles per person, access mapping per Slack channel, GitLab project and document.
+- The same question gives an engineer "I couldn't find this in the sources you can access" and HR the cited answer.
+- People request roles in the app; admins approve or deny with a note.
+
+**Act through tools, safely**
+- "Create an issue in engineering…", "comment on issue #7…", "post this in #general…" become an editable action card.
+- Actions run through the official GitLab and Slack MCP servers, only after the person confirms, signed "on behalf of" them, and recorded.
+- If a request could mean "explain how" or "do it", GitMore asks with two buttons; how-to answers offer to do the task.
+
+**Keep knowledge current**
+- Slack and GitLab connectors with scheduled sync and Sync now.
+- A Knowledge library: upload PDF or Word files, or link a file in GitLab, and choose who can read it.
+- Handbook refresh from the admin console, with configurable sections and age window.
+
+**Run and improve it**
+- Admin console: people, roles, access requests, search and answer settings, usage, activity log.
+- A query inspector for every message: route, searched-for question, evidence-gate decision, every chunk with its scores, tokens, cost and time.
+- Langfuse traces and repeatable evaluations for retrieval quality and permissions.
+
+## Tech stack
+
+| Layer | Technology | Used for |
+|---|---|---|
+| Frontend | Next.js 16, React, TypeScript, Tailwind CSS | Chat, knowledge, connectors, MCP tools and admin pages |
+| API | Python, FastAPI | REST and streaming (server-sent events) endpoints |
+| Orchestration | LangGraph | Router and the knowledge, action, choose, clarify and chat paths |
+| Language model | GPT-4o mini (OpenAI SDK, configurable) | Routing, question rewrites and cited answers |
+| Evidence gate | Jev by TypeSafe (System One API) | "Do these sources contain enough evidence?" before answering |
+| Embeddings | BGE-M3 (sentence-transformers, local GPU or CPU) | 1024-dimension vectors for chunks and questions |
+| Reranker | BGE Reranker v2-m3 (local) | Reordering fused results by relevance |
+| Database | PostgreSQL 18, pgvector 0.8 (HNSW), full-text search (GIN) | Chunks, vectors, users, roles, access, chats, actions, logs |
+| Connectors | Slack Web API, GitLab REST API | Syncing threads, issues, wiki pages and files |
+| Actions | Model Context Protocol (official MCP Python SDK), GitLab and Slack MCP servers | Creating issues, comments and Slack messages |
+| Documents | pypdf, python-docx | Turning uploads into searchable Markdown |
+| Security | bcrypt, JWT with server-side sessions, Fernet encryption | Passwords, logins, connector and MCP tokens |
+| Observability | Langfuse, built-in usage log | Traces, tokens, cost, latency, query inspector |
+| Infrastructure | Docker Compose | PostgreSQL and Langfuse locally |
 
 ## Architecture
-
-Brainbase has two main paths: **ingestion**, which prepares and updates the knowledge index, and **query execution**, which processes a user's request.
 
 <a id="architecture"></a>
 
 <div align="center">
 
-<img src="assets/brainbase-architecture.svg" alt="Brainbase architecture: configurable sources, ingestion, PostgreSQL vector index, retrieval, routing, grounded answers and controlled actions" width="100%">
+<img src="assets/brainbase-architecture.svg" alt="BrainBase architecture: sources are synced, chunked and embedded into PostgreSQL with pgvector; a question passes the router, permission-filtered hybrid search, reranking and the Jev evidence gate before GPT writes a cited answer; actions go through MCP with confirmation; everything is traced and evaluated." width="100%">
 
 </div>
 
-### 1. Configure sources and access
+### 1. Ingestion
 
-Administrators configure connector credentials, synchronization, roles, source-level access mappings, and MCP tool settings. Connector credentials are encrypted at rest.
+Connectors fetch Slack threads (one document per thread), GitLab issues with their comments, wiki pages, and linked files; the GitLab handbook is read from a sparse Git clone, and people can upload PDF and Word files. Each document is converted to Markdown, cleaned, and split at its headings into chunks that keep their breadcrumb (page › section). Chunks are embedded with BGE-M3 and stored in PostgreSQL with an HNSW vector index, a full-text index, and the roles allowed to read them. A content hash means unchanged documents are skipped on every sync, and documents that disappear from a source are removed.
 
-### 2. Ingest and index
+### 2. Configuration
 
-Content is parsed, cleaned, split into meaningful chunks, enriched with metadata, embedded, and stored in PostgreSQL with pgvector and full-text search. Synchronization updates changed content and removes content that no longer exists in a source.
+Admins manage everything from the admin console: connector tokens (encrypted at rest), sync intervals, roles, which roles can read each channel, project or document, which MCP tools exist and who may use them, and the search and answer settings. A change to access applies to already-indexed content at once, without re-embedding.
 
-### 3. Retrieve evidence
+### 3. Routing
 
-The query path combines vector and keyword search, merges candidate lists using reciprocal rank fusion (RRF), and reranks results to prioritize relevant evidence. Access restrictions are applied in the retrieval query before content is passed to the language model.
+Every message goes through a LangGraph router: one GPT call that reads the recent conversation and decides between **chat** (greetings, "what can you do"), **knowledge** (search and answer), **action** (use a tool), **choose** (offer "explain" or "do it") and **clarify** (ask back). Follow-ups are rewritten to stand on their own in the same call. A local similarity check stops company questions from being answered as small talk.
 
-An evidence gate then checks the reranked sources with [Jev](https://www.jevai.org/), TypeSafe's System One model: do they contain enough evidence to answer? If not, the question is rewritten and searched once more; if there is still not enough, the person is told the answer isn't in the sources they can access, and no answer is generated. Search depth, the model, answer length, and the gate threshold are admin settings.
+### 4. Retrieval
 
-### 4. Generate grounded answers
+The question is searched two ways in one SQL query: vector similarity and keyword search, both filtered by the person's roles, so restricted chunks never leave the database. The two result lists are merged with reciprocal rank fusion, and the BGE reranker reads the best candidates closely and keeps the top five.
 
-The language model answers from retrieved context and provides source citations. The intended behavior is to surface missing evidence and source conflicts rather than present unsupported guesses as facts.
+### 5. Evidence gate
 
-### 5. Route and act
+Before any answer is written, [Jev](https://www.jevai.org/), TypeSafe's System One model, reads the question with a trimmed copy of each source and returns the probability that they contain enough evidence, plus whether each source helps. Above the threshold, the answer is written. Below it, GPT rewrites the question, the search runs once more, and Jev checks again. If there is still not enough, the person gets "I couldn't find this in the sources you can access" without an answer call. Jev's decision is recorded for the query inspector. If Jev is unavailable, the gate steps aside.
 
-LangGraph provides the orchestration layer for multi-step workflows. The intended routing model covers knowledge retrieval, authorized live lookups, tool actions, and clarification. MCP enables standardized tool integration; write operations should require authorization, user confirmation, and audit logging.
+### 6. Grounded answers
+
+GPT-4o mini answers only from the numbered sources, cites each claim, treats the handbook as official policy over chat messages, and names conflicts. The answer streams to the chat as it is written, with source cards that link to the originals.
+
+### 7. Actions
+
+Action requests are drafted from the person's words, searching first when the draft needs facts. The draft is checked (tool enabled, role allowed, project or channel readable) and shown as a card. Nothing is sent until the person confirms; the checks run again at that moment, the text is signed "with GitMore on behalf of" the person, the official GitLab or Slack MCP server performs it, and the action is recorded in the activity log.
+
+### 8. Observability and evaluation
+
+Each message becomes one Langfuse trace (router, Jev checks, rewrite, answer) labelled with the person and the chat. GitMore also keeps its own permanent usage log with tokens, cost and the full retrieval detail behind the query inspector. Evaluation scripts measure retrieval quality and test permissions by asking as real demo people.
+
+## Security and permissions
+
+- **Deny by default:** a newly discovered Slack channel or GitLab project is readable by admins only until someone maps it to roles.
+- **Roles come from the database on every request**, never from the browser.
+- **Filtering happens inside the search query**, before ranking and before the model sees anything.
+- **Documents people add** can only be shared with everyone or with roles the uploader holds; GitLab file links keep their project's access.
+- **Server-side sessions:** each login is a session that logout, a password change or deactivation closes immediately. The token travels in an HTTP-only cookie, marked Secure over HTTPS.
+- **Login rate limit:** repeated wrong passwords for an account or from an address are blocked for a while.
+- **Encrypted secrets:** connector and MCP tokens are stored with Fernet encryption; admins only ever see the last four characters.
+- **Actions with accountability:** tools are off until an admin enables them for specific roles, Slack posts are limited to channels the person can read (no direct messages), every action needs confirmation, and every action is logged.
+- **Company accounts only:** sign-up is limited to the company email domain, and new accounts start with the public handbook only.
+
+## Admin settings
+
+Everything below is changed in the app, recorded in the activity log, and takes effect without a deploy.
+
+| Area | What admins can change |
+|---|---|
+| People | Roles per person, admin rights, deactivation, access requests with approve or deny |
+| Roles | Add and describe roles; which roles may add documents |
+| Connectors | Add Slack and GitLab, replace tokens, sync interval, on/off, Sync now, remove |
+| Source access | Which roles can read each Slack channel and GitLab project |
+| Knowledge | Upload, link, refresh, replace and remove documents, and who can read them |
+| MCP tools | Connect MCP servers, turn each action on or off, choose which roles can use it |
+| Search & answers | Results per search, rerank pool, sources per answer, model and prices, answer length |
+| Evidence gate | On or off, Jev threshold, Jev model and price |
+| Handbook | Sections always kept, age window, refresh now |
 
 ## Demo
 
@@ -115,9 +179,9 @@ Screenshots from GitMore running locally with the demo data.
 
 **Cited answers across sources.** An engineer asks about PTO notice. The answer follows the handbook and points out that an older Slack thread said something different.
 
-<img src="assets/screenshots/chat-cited-answer.png" alt="GitMore chat: an answer about PTO notice citing two handbook pages and naming an older, conflicting Slack thread, with source cards below" width="100%">
+<img src="assets/screenshots/chat-cited-answer.png" alt="GitMore chat: an answer about PTO notice citing handbook pages and naming an older, conflicting Slack thread, with source cards below" width="100%">
 
-**Permissions before generation.** The same question about draft salary bands, asked by an engineer and by someone in HR. Restricted content never reaches the model for the engineer.
+**Permissions before generation.** The same question about the draft salary bands, asked by an engineer and by someone in HR. The restricted pages never reach the model for the engineer, and the evidence gate stops the answer before it is written.
 
 <table>
   <tr>
@@ -125,91 +189,82 @@ Screenshots from GitMore running locally with the demo data.
     <th width="50%">HR</th>
   </tr>
   <tr>
-    <td valign="top"><img src="assets/screenshots/permissions-engineer.png" alt="An engineer asks for the 2027 salary bands and gets: I couldn't find this in the sources you can access" width="100%"></td>
-    <td valign="top"><img src="assets/screenshots/permissions-hr.png" alt="Someone in HR asks the same question and gets the draft bands, cited from the HR-only wiki page and the private HR Slack channel" width="100%"></td>
+    <td valign="top"><img src="assets/screenshots/permissions-engineer.png" alt="An engineer asks for the draft 2027 salary bands and gets: I couldn't find this in the sources you can access" width="100%"></td>
+    <td valign="top"><img src="assets/screenshots/permissions-hr.png" alt="Someone in HR asks the same question and gets the draft bands, cited from the HR-only wiki page" width="100%"></td>
   </tr>
 </table>
 
+**Query inspector and the evidence gate.** Behind the engineer's answer: Jev scored the first search 0.03, GPT rewrote the question, Jev scored the retry 0.16, so GitMore replied "couldn't find" without an answer call. Every chunk is listed with its vector, keyword, fusion and rerank scores.
+
+<img src="assets/screenshots/query-inspector.png" alt="Query inspector: route, tokens, cost and time; the rewritten question; the evidence gate with Jev's score for each try and each source; the chunks found with their scores" width="100%">
+
+**Actions with confirmation.** "Create an issue in engineering…" becomes a draft the person can edit. Nothing is posted until they confirm.
+
+<img src="assets/screenshots/action-card.png" alt="An action card for a new GitLab issue in the engineering project, signed on behalf of the person, with Edit and Create issue buttons" width="100%">
+
+**Knowledge library.** Every source GitMore searches for the person, with document counts, plus documents people added.
+
+<img src="assets/screenshots/knowledge.png" alt="Knowledge page: GitLab handbook, Slack threads, GitLab issues and wiki pages with document counts, and an Add document button" width="100%">
+
 **Connectors and access mapping.** Admins connect Slack and GitLab, sync on a schedule or on demand, and choose which roles can read each channel or project.
 
-<img src="assets/screenshots/connectors.png" alt="Connectors page: Slack and GitLab connectors with sync status, and a table mapping each Slack channel to the roles that can read it" width="100%">
+<img src="assets/screenshots/connectors.png" alt="Connectors page: Slack and GitLab connectors with sync status, and a table mapping each channel to the roles that can read it" width="100%">
 
-**Admin console.** People, roles, access requests and an activity log, with a confirmation before every change.
+**Admin console and settings.** People, roles, access requests, usage and the activity log, plus search and answer settings such as the evidence gate.
 
-<img src="assets/screenshots/admin-console.png" alt="Admin console: overview tiles, people per role, and the users table with role dropdowns and active switches" width="100%">
+<table>
+  <tr>
+    <td width="50%" valign="top"><img src="assets/screenshots/admin-console.png" alt="Admin console: overview tiles, people per role and the users table" width="100%"></td>
+    <td width="50%" valign="top"><img src="assets/screenshots/jev-settings.png" alt="Evidence gate settings: on/off switch, threshold 0.5, Jev model jev-latest and Jev price" width="100%"></td>
+  </tr>
+</table>
 
-### Suggested walkthrough
+### Try it yourself
 
-1. Ask a question about a company policy or engineering process.
-2. Inspect the cited sources and open the original document or issue.
-3. Sign in as a different demo user and compare what information is visible.
-4. Open the connector settings to inspect synchronization and source access.
-5. Review the admin console and activity log.
+1. Log in as an engineer (`aiko.tanaka@gitmore.com`) and ask how much notice PTO needs. Open the cited sources.
+2. Ask for the draft 2027 salary bands. Then log in as HR (`carlos.mendes@gitmore.com`) and ask again.
+3. As the admin, open Admin console → Usage and click both questions to compare them in the query inspector.
+4. Ask GitMore to create an issue in the engineering project, edit the draft, then cancel or confirm it.
+5. Add a PDF in Knowledge, share it with one role, and ask about it as someone with and without that role.
+6. Change the answer length or evidence threshold in Search & answers and ask again.
 
-> **Demo environment:** GitMore is an unofficial learning/reference implementation. GitLab handbook content is public content; synthetic internal records are used for confidential-data and permission demonstrations. Do not enter real secrets or private company data into a public demo.
+> **Demo environment:** GitMore is an unofficial learning and reference implementation. GitLab handbook content is public; internal records are synthetic and exist to demonstrate permissions. Do not put real secrets or private company data into a demo.
 
-## Engineering highlights
+## Evaluation
 
-### Retrieval quality
+GitMore is measured with its own scripts, run against the real index and the real chat flow.
 
-The current pipeline uses BGE-M3 embeddings, hybrid vector and keyword search, reciprocal rank fusion, and BGE Reranker v2-m3.
+### Retrieval and answer quality
 
-Initial evaluation baseline:
+`backend/scripts/evaluate.py` asks a curated set of handbook questions with known answer pages, and measures whether the right page is retrieved, how high it ranks, whether answers cite sources, and whether "no answer" questions are refused. Faithfulness and correctness are graded by GPT-4o mini and checked by hand.
 
-| Metric | Baseline |
+| Metric | Result |
 |---|---:|
-| Retrieval hit@5 | 9/9 |
+| Expected page in the top 5 (hit@5) | 9/9 |
 | Mean reciprocal rank (MRR) | 0.81 |
-| Questions with citations | 9/9 |
-| Correct answers by manual review | 8/10 |
-| No-answer test | 1/1 |
+| Answers with citations | 9/9 |
+| Correct by manual review | 8/10 |
+| No-answer question refused | 1/1 |
 
-These results are from the initial evaluation set, not a comprehensive benchmark. They serve as a baseline for further improvements.
+Reranking was the biggest single improvement: the expected page reached the top five for 6/6 search-test questions after reranking, up from 2/6 with vector search alone. Shrinking the rerank pool from 50 to 30 kept the same scores and cut answer time from 6.1 s to 4.3 s.
 
-### Permission-aware retrieval
+### Permissions and routing
 
-- Role definitions are stored in the database.
-- Source access mappings control which roles can read each project or channel.
-- Newly discovered sources are denied to ordinary users until access is mapped.
-- Retrieval filters restricted chunks before they reach the model.
+`backend/scripts/evaluate_access.py` asks 24 questions as real demo people and checks what they get back.
 
-Permission correctness is a critical system requirement and should be validated continuously with cross-role tests.
+| Case type | Cases | What is checked |
+|---|---:|---|
+| Leak | 5 | Restricted content (salary bands, restructuring plan, security incident, confidential issues) is never shown to the wrong role |
+| Find | 3 | The right role does get the answer, with citations |
+| Routing | 14 | Small talk, commands, how-to questions, prompt injection, refused channels and unavailable tools go the right way |
+| Conflict | 1 | The current handbook rule wins over an older Slack answer, which is named |
+| Cross-source | 1 | One answer combines Slack and GitLab |
 
-### Synchronization and freshness
+**Leaks found in every run so far: 0.** The retrieval-only mode (no GPT calls, free) passed 8 of 8 permission checks. A `--quick` mode runs the 9 most important cases after any settings change.
 
-- Scheduled synchronization, with the interval set per connector, plus an on-demand **Sync now**.
-- Per-connector locking and change-aware upserts: unchanged content is never re-embedded.
-- Deletion handling to remove content that disappears from a source.
-- Access changes apply to indexed content immediately, without waiting for the next sync.
-
-### Security and observability
-
-- Password hashes stored with bcrypt.
-- JWT session delivered through an HTTP-only cookie.
-- Connector tokens encrypted in the database using Fernet.
-- Secret material supplied through environment configuration.
-- Langfuse tracing for model and retrieval activity, including token usage, cost, and latency.
-- Evaluation scripts for retrieval metrics, citation presence, no-answer behavior, and model-assisted answer grading.
-
-## Technology stack
-
-| Layer | Technology | Role |
-|---|---|---|
-| Frontend | Next.js, TypeScript, Tailwind CSS | Chat and admin experience |
-| API | Python, FastAPI | Application endpoints |
-| Orchestration | LangGraph | Workflow execution |
-| LLM | GPT-4o mini via OpenAI SDK | Answer generation |
-| Embeddings | BGE-M3 | Local embedding generation |
-| Reranker | BGE Reranker v2-m3 | Relevance ranking |
-| Database | PostgreSQL 18, pgvector 0.8.7 | Vectors, full-text search, metadata, users |
-| Connectors | GitLab API, Slack API | Content and metadata synchronization |
-| Tool integration | MCP | Standardized external tool interfaces |
-| Observability | Langfuse | Tracing and model-call metrics |
-| Local infrastructure | Docker Compose | Database and supporting services |
+These sets are small and hand-built. They are a baseline to catch regressions, not a benchmark.
 
 ## Run locally
-
-Brainbase is a local development project: Docker Compose for the database, a Python (FastAPI) backend, and a Next.js frontend. All commands run from the repository root unless noted.
 
 ### Prerequisites
 
@@ -218,8 +273,11 @@ Brainbase is a local development project: Docker Compose for the database, a Pyt
 - Python 3.11+
 - Node.js 20+ and npm
 - An OpenAI API key (or any OpenAI-compatible endpoint)
+- A TypeSafe API key for the Jev evidence gate (optional: without it, the gate is skipped)
 - An NVIDIA GPU is recommended for the embedding and reranker models; CPU works, more slowly
 - GitLab and Slack credentials if you want to try the connectors and actions
+
+All commands run from the repository root unless noted.
 
 ### 1. Clone the repository
 
@@ -234,7 +292,7 @@ cd BrainBase
 cp .env.example .env        # Windows: copy .env.example .env
 ```
 
-Fill in `.env`. Each setting is explained in `.env.example`; at minimum set the database values, `OPENAI_API_KEY`, `JWT_SECRET`, `SECRETS_KEY` and the seed account passwords. `.env` is git-ignored: keep API keys, tokens and secrets out of Git.
+Fill in `.env`. Each setting is explained in `.env.example`; at minimum set the database values, `OPENAI_API_KEY`, `JWT_SECRET`, `SECRETS_KEY` and the seed account passwords, and add `TYPESAFE_API_KEY` for the evidence gate. `.env` is git-ignored: keep API keys, tokens and secrets out of Git.
 
 ### 3. Start PostgreSQL with pgvector
 
@@ -267,7 +325,7 @@ python backend/scripts/handbook_dates.py      # each page's last-change date
 python -m app.ingestion.ingest_handbook       # chunk, embed and store (about 30,000 chunks)
 ```
 
-The first run downloads the BGE-M3 and reranker models. Afterwards, set `HF_HUB_OFFLINE=1` in `.env` so they load from the local cache.
+The first run downloads the BGE-M3 and reranker models. Afterwards, set `HF_HUB_OFFLINE=1` in `.env` so they load from the local cache. Later refreshes can be started from Admin console → Search & answers → Refresh handbook.
 
 ### 6. Run GitMore
 
@@ -296,27 +354,26 @@ Log in with `ADMIN_EMAIL` and `ADMIN_PASSWORD`, or as a demo person such as `aik
 docker compose -f docker-compose.langfuse.yml up -d          # Langfuse on http://localhost:3100
 python -m unittest discover -s backend/tests                  # fast tests
 python backend/scripts/evaluate_access.py --retrieval-only    # permission check, no GPT calls
+python backend/scripts/evaluate_access.py --quick             # 9 key cases through the real chat flow
 ```
 
 ## Design principles
 
-- **Configurable over hardcoded:** organization-specific settings should be expressed through configuration wherever practical.
-- **Evidence over guesses:** answers should be grounded in sources and acknowledge missing evidence.
-- **Permissions before generation:** restricted content must be filtered before it reaches the model.
-- **Actions with accountability:** external write operations should be authorized, confirmed, and recorded.
-- **Measure before optimizing:** retrieval and routing improvements should be evaluated against repeatable test sets.
-- **Build incrementally:** keep the system understandable while expanding its capabilities.
+- **Configurable over hardcoded:** organization-specific settings are configuration, managed in the app.
+- **Evidence over guesses:** answers are grounded in sources, and missing evidence is said out loud.
+- **Permissions before generation:** restricted content is filtered before it reaches the model.
+- **Actions with accountability:** external write operations are authorized, confirmed and recorded.
+- **Measure before optimizing:** retrieval and routing changes are checked against repeatable test sets.
+- **Build incrementally:** keep the system understandable while expanding what it can do.
 
 ---
 
 <div align="center">
 
-### Brainbase
-
-**A foundation for building company brains.**
+**BrainBase** · a foundation for building company brains
 
 Built by **Shreya Mhetre**
 
-<sub>Brainbase is an independent project. GitMore is an unofficial reference implementation and is not affiliated with or endorsed by GitLab.</sub>
+<sub>BrainBase is an independent project. GitMore is an unofficial reference implementation and is not affiliated with or endorsed by GitLab. Jev is a product of TypeSafe.</sub>
 
 </div>
