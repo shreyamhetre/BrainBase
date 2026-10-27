@@ -1,12 +1,14 @@
 """The question-answering graph. The router decides the path for every message:
 
     START → route ─┬─ chat ──────→ reply (written by the router, no sources) ─→ END
-                   ├─ knowledge → retrieve → answer ─────────────────────────→ END
+                   ├─ knowledge → retrieve + Jev gate → answer ─────────────→ END
                    ├─ action ───→ propose (search first if needed) ──────────→ END   (the person confirms later)
                    ├─ choose ───→ propose, and offer "explain" or "do it" ────→ END
                    └─ clarify ─────────────────────────────────────────────────→ END
 
 A "chat" label is double-checked (chat_guard): a company question is searched instead.
+Knowledge answers pass the Jev evidence gate first (app/evidence_gate.py): too little evidence
+means one retry with a rewritten question, then "couldn't find" without calling GPT.
 
 Each node is traced in Langfuse with @observe, nested under one trace per message, tagged
 with the user who asked.
@@ -24,6 +26,7 @@ from app.actions import ActionRefused, Scope, check, scope_for, signature
 from app.chat_guard import is_company_question
 from app.auth import User, search_roles
 from app.db.connection import connect
+from app.evidence_gate import GateResult, gated_retrieve
 from app.generation.answer import NOT_FOUND, Answer, format_sources, generate_answer
 from app.retrieval.retrieve import retrieve
 from app.retrieval.search import Candidate
@@ -50,6 +53,7 @@ class Reply:
     # For the query inspector: what was searched and every chunk found, even when none were used
     search_question: str = ""
     retrieved: list[Candidate] = field(default_factory=list)
+    gate: dict | None = None          # what Jev saw and decided (None when the gate didn't run)
 
 
 class State(TypedDict, total=False):
@@ -60,6 +64,7 @@ class State(TypedDict, total=False):
     scope: Scope
     route: Route
     chunks: list[Candidate]
+    gate: GateResult
     reply: Reply
 
 
@@ -74,23 +79,34 @@ def route_node(state: State) -> State:
     return {"scope": scope, "route": r}
 
 
+def _gated(question: str, user: User) -> GateResult:
+    roles = search_roles(user)
+    with connect() as conn:
+        return gated_retrieve(lambda q: retrieve(conn, q, roles), question)
+
+
 @observe(name="retrieve", as_type="retriever")
 def retrieve_node(state: State) -> State:
-    with connect() as conn:
-        return {"chunks": retrieve(conn, state["route"].question, search_roles(state["user"]))}
+    gate = _gated(state["route"].question, state["user"])
+    return {"chunks": gate.chunks, "gate": gate}
 
 
 @observe(name="answer")
 def answer_node(state: State) -> State:
-    r = state["route"]
+    r, gate = state["route"], state.get("gate")
+    # A failed gate leaves no chunks, so the answer is "couldn't find" without a GPT call
+    # The rewrite is only a search query: the answer replies to the person's own question
     answer = generate_answer(r.question, state["chunks"], state.get("on_text"))
     # "Couldn't find": the chunks it looked at didn't answer the question, so don't show them as sources
     sources = [] if NOT_FOUND.rstrip(".") in answer.text else answer.sources
+    rewrite_in, rewrite_out = gate.rewrite_tokens if gate else (0, 0)
     return {"reply": Reply(kind="answer", text=answer.text, answer=answer, sources=sources,
-                           search_question=r.question, retrieved=state["chunks"],
+                           search_question=gate.question if gate else r.question,
+                           retrieved=gate.retrieved if gate else state["chunks"],
+                           gate=gate.details() if gate and gate.outcome != "off" else None,
                            offer_tool=r.offer_tool if sources else "",
-                           prompt_tokens=answer.prompt_tokens + r.prompt_tokens,
-                           completion_tokens=answer.completion_tokens + r.completion_tokens)}
+                           prompt_tokens=answer.prompt_tokens + r.prompt_tokens + rewrite_in,
+                           completion_tokens=answer.completion_tokens + r.completion_tokens + rewrite_out)}
 
 
 @observe(name="propose-action")
@@ -118,9 +134,8 @@ def action_node(state: State) -> State:
     except ActionRefused as e:
         if r.kind == "choose":  # the "do it" half isn't possible: just answer the question
             r.kind = "knowledge"
-            with connect() as conn:
-                chunks = retrieve(conn, r.question, search_roles(user))
-            return answer_node({**state, "route": r, "chunks": chunks})
+            gate = _gated(r.question, user)
+            return answer_node({**state, "route": r, "chunks": gate.chunks, "gate": gate})
         return {"reply": Reply(kind="clarify", text=f"I can't do that: {e}", prompt_tokens=r.prompt_tokens,
                                completion_tokens=r.completion_tokens)}
     summary = r.summary or f"Run {tool.name}"
@@ -212,5 +227,5 @@ def ask(message: str, user: User, history: list[dict] | None = None, conversatio
 def ask_as(question: str, roles: list[str]) -> Answer:
     """Knowledge only, for scripts and evaluation: answer as someone with these roles."""
     with connect() as conn:
-        chunks = retrieve(conn, question, roles)
-    return generate_answer(question, chunks)
+        gate = gated_retrieve(lambda q: retrieve(conn, q, roles), question)
+    return generate_answer(question, gate.chunks)

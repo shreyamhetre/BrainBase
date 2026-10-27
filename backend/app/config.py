@@ -15,6 +15,7 @@ LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4o-mini")  # GPT-4o mini
 # US dollars per million tokens, for the usage log (GPT-4o mini list prices; change with the model)
 LLM_PRICE_INPUT_PER_M = float(os.getenv("LLM_PRICE_INPUT_PER_M", "0.15"))
 LLM_PRICE_OUTPUT_PER_M = float(os.getenv("LLM_PRICE_OUTPUT_PER_M", "0.60"))
+TYPESAFE_API_KEY = os.getenv("TYPESAFE_API_KEY", "")  # Jev evidence gate; empty = gate skipped
 
 JWT_SECRET = os.getenv("JWT_SECRET", "")
 JWT_EXPIRE_HOURS = int(os.getenv("JWT_EXPIRE_HOURS", "24"))

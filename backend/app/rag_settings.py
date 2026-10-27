@@ -38,6 +38,11 @@ class RagSettings:
     price_input_per_m: float = LLM_PRICE_INPUT_PER_M
     price_output_per_m: float = LLM_PRICE_OUTPUT_PER_M
     answer_length: str = "normal"
+    # Jev evidence gate (one retry with a rewritten question)
+    gate_enabled: bool = True
+    gate_threshold: float = 0.5          # Jev's "enough evidence" probability needed to answer
+    gate_model: str = "jev-latest"
+    gate_price_per_m: float = 0.042      # Jev charges input tokens only
     # Handbook (applied on the next refresh)
     handbook_core_sections: list[str] = field(default_factory=lambda: list(DEFAULT_CORE_SECTIONS))
     handbook_max_age_days: int = 365
@@ -45,12 +50,15 @@ class RagSettings:
 
 # (min, max) for numbers; the handbook window can't exceed the one year of Git history in the clone
 LIMITS = {"candidates_per_search": (10, 200), "rerank_pool": (5, 100), "final_k": (1, 10),
-          "price_input_per_m": (0, 100), "price_output_per_m": (0, 400), "handbook_max_age_days": (30, 365)}
+          "price_input_per_m": (0, 100), "price_output_per_m": (0, 400), "handbook_max_age_days": (30, 365),
+          "gate_threshold": (0.1, 0.9), "gate_price_per_m": (0, 10)}
+FLOATS = {"price_input_per_m", "price_output_per_m", "gate_threshold", "gate_price_per_m"}
 
 
 NAMES = {"candidates_per_search": "Results per search", "rerank_pool": "Rerank pool", "final_k": "Sources per answer",
          "price_input_per_m": "Input price", "price_output_per_m": "Output price",
-         "handbook_max_age_days": "Handbook age window (days)"}
+         "handbook_max_age_days": "Handbook age window (days)", "gate_threshold": "Evidence threshold",
+         "gate_price_per_m": "Jev price"}
 
 
 class SettingsError(ValueError):
@@ -82,15 +90,18 @@ def validate(changes: dict, available_sections: list[str]) -> dict:
         if key in LIMITS:
             low, high = LIMITS[key]
             try:
-                value = float(value) if key.startswith("price") else int(value)
+                value = float(value) if key in FLOATS else int(value)
             except (TypeError, ValueError):
                 raise SettingsError(f"{NAMES[key]} must be a number") from None
             if not low <= value <= high:
                 raise SettingsError(f"{NAMES[key]} must be between {low} and {high}")
-        elif key == "llm_model":
+        elif key in ("llm_model", "gate_model"):
             value = str(value).strip()
             if not value or len(value) > 100:
-                raise SettingsError("Enter a model name, e.g. gpt-4o-mini")
+                raise SettingsError("Enter a model name, e.g. gpt-4o-mini or jev-latest")
+        elif key == "gate_enabled":
+            if not isinstance(value, bool):
+                raise SettingsError("The evidence gate is either on or off")
         elif key == "answer_length":
             if value not in ANSWER_LENGTHS:
                 raise SettingsError("Answer length must be short, normal or detailed")

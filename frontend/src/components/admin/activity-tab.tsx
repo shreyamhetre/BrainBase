@@ -24,7 +24,7 @@ const KINDS = {
 
 const b = (text: string | null) => <strong className="font-medium text-foreground">{text ?? "someone"}</strong>;
 
-const fmt = (v: unknown) => (Array.isArray(v) ? (v.length ? v.join(", ") : "none") : String(v));
+const fmt = (v: unknown) => (Array.isArray(v) ? (v.length ? v.join(", ") : "none") : typeof v === "boolean" ? (v ? "on" : "off") : String(v));
 
 // One plain sentence per log entry.
 function describe(a: Activity): ReactNode {

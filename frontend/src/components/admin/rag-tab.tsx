@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
-import { ErrorNote, Pill } from "@/components/admin/parts";
+import { ErrorNote, Pill, Switch } from "@/components/admin/parts";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Icon } from "@/components/icons";
 import { api, type RagSettings, type RagSettingsResponse } from "@/lib/api";
@@ -15,6 +15,10 @@ const LABELS: Record<keyof RagSettings, string> = {
   price_input_per_m: "Input price",
   price_output_per_m: "Output price",
   answer_length: "Answer length",
+  gate_enabled: "Evidence gate",
+  gate_threshold: "Evidence threshold",
+  gate_model: "Jev model",
+  gate_price_per_m: "Jev price",
   handbook_core_sections: "Sections always kept",
   handbook_max_age_days: "Keep pages changed in the last",
 };
@@ -46,7 +50,7 @@ function Card({ title, description, children }: { title: string; description: st
 }
 
 const show = (key: keyof RagSettings, v: unknown) =>
-  Array.isArray(v) ? (v.length ? v.join(", ") : "none") : key.startsWith("price") ? `$${v} / M tokens` : String(v);
+  Array.isArray(v) ? (v.length ? v.join(", ") : "none") : typeof v === "boolean" ? (v ? "on" : "off") : key.includes("price") ? `$${v} / M tokens` : String(v);
 
 // RAG settings: search and answers apply to the next message; handbook rules on the next refresh.
 export function RagTab() {
@@ -105,7 +109,7 @@ export function RagTab() {
   const set = <K extends keyof RagSettings>(key: K, value: RagSettings[K]) => setDraft({ ...draft, [key]: value });
   const num = (key: keyof RagSettings) => (
     <input type="number" className={`${field} max-w-[10rem] tabular-nums`} value={draft[key] as number}
-      min={data.limits[key]?.[0]} max={data.limits[key]?.[1]} step={key.startsWith("price") ? 0.01 : 1}
+      min={data.limits[key]?.[0]} max={data.limits[key]?.[1]} step={key === "gate_threshold" ? 0.05 : key.includes("price") ? 0.001 : 1}
       onChange={(e) => set(key, Number(e.target.value) as never)} />
   );
   const range = (key: keyof RagSettings) => data.limits[key] ? `${data.limits[key][0]}–${data.limits[key][1]}` : "";
@@ -157,6 +161,24 @@ export function RagTab() {
             ))}
           </div>
           <p className="mt-2 text-xs text-muted">{data.answer_lengths[draft.answer_length]}</p>
+        </Row>
+      </Card>
+
+      <Card title="Evidence gate (Jev)" description="Before GPT answers, Jev checks whether the sources contain enough evidence. If not, GPT rewrites the question and GitMore searches once more; still not enough means “I couldn't find this” without an answer call.">
+        <Row label={LABELS.gate_enabled} hint="Off: every question goes straight to GPT, as before.">
+          <div className="flex items-center gap-3 text-sm">
+            <Switch on={draft.gate_enabled} label="Evidence gate" onToggle={() => set("gate_enabled", !draft.gate_enabled)} />
+            <span className="text-muted">{draft.gate_enabled ? "On" : "Off"}</span>
+          </div>
+        </Row>
+        <Row label={LABELS.gate_threshold} hint={`Jev's probability (0 to 1) that the sources are enough, needed to answer (${range("gate_threshold")}). Higher refuses more. Default ${data.defaults.gate_threshold}.`}>
+          {num("gate_threshold")}
+        </Row>
+        <Row label={LABELS.gate_model} hint="jev-latest follows TypeSafe's newest Jev release.">
+          <input className={`${field} max-w-xs font-mono`} value={draft.gate_model} onChange={(e) => set("gate_model", e.target.value)} />
+        </Row>
+        <Row label="Jev price per million tokens" hint="Jev charges input tokens only. Added to the cost in Usage.">
+          <label className="flex items-center gap-2 text-sm">$ {num("gate_price_per_m")}</label>
         </Row>
       </Card>
 

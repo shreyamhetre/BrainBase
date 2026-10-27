@@ -21,6 +21,9 @@ def log_question(user_id: str | None, message: str, reply, seconds: float) -> No
     text = f"[{reply.kind}] {reply.text}" if reply.kind != "answer" else reply.text
     used = {id(c) for c in reply.sources}
     details = {"chunks": [_chunk(n, c, id(c) in used and (n in cited)) for n, c in enumerate(getattr(reply, "retrieved", []) or [], 1)]}
+    gate = getattr(reply, "gate", None)
+    if gate:
+        details["gate"] = gate
     if reply.action:
         details["action"] = {"tool": reply.action.get("tool"), "server": reply.action.get("server"),
                              "summary": reply.action.get("summary"), "target": reply.action.get("target")}
@@ -30,7 +33,7 @@ def log_question(user_id: str | None, message: str, reply, seconds: float) -> No
             "cost_usd, seconds, trace_id, trace_url, route, search_question, details) "
             "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
             (user_id, message, text, found, json.dumps(sources), rag_settings.get().llm_model, reply.prompt_tokens, reply.completion_tokens,
-             cost_usd(reply.prompt_tokens, reply.completion_tokens), seconds, reply.trace_id, reply.trace_url,
+             cost_usd(reply.prompt_tokens, reply.completion_tokens) + (gate or {}).get("jev_cost_usd", 0), seconds, reply.trace_id, reply.trace_url,
              reply.kind, getattr(reply, "search_question", "") or None, json.dumps(details)),
         )
 

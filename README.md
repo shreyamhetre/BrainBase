@@ -65,7 +65,7 @@ It demonstrates how a company-specific experience can bring together GitLab proj
 ### What GitMore demonstrates
 
 - A chat interface with clickable source citations.
-- Handbook ingestion, hybrid retrieval, reciprocal rank fusion, and reranking.
+- Handbook ingestion, hybrid retrieval, reciprocal rank fusion, reranking, and a Jev evidence gate.
 - User authentication and database-backed roles.
 - Source-level access mappings for GitLab projects and Slack channels.
 - Configurable connector settings and encrypted connector credentials.
@@ -98,6 +98,8 @@ Content is parsed, cleaned, split into meaningful chunks, enriched with metadata
 ### 3. Retrieve evidence
 
 The query path combines vector and keyword search, merges candidate lists using reciprocal rank fusion (RRF), and reranks results to prioritize relevant evidence. Access restrictions are applied in the retrieval query before content is passed to the language model.
+
+An evidence gate then checks the reranked sources with [Jev](https://www.jevai.org/), TypeSafe's System One model: do they contain enough evidence to answer? If not, the question is rewritten and searched once more; if there is still not enough, the person is told the answer isn't in the sources they can access, and no answer is generated. Search depth, the model, answer length, and the gate threshold are admin settings.
 
 ### 4. Generate grounded answers
 

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { ErrorNote, Pill } from "@/components/admin/parts";
 import { AnswerText } from "@/components/answer-text";
 import { Icon } from "@/components/icons";
-import { api, type UsageDetail } from "@/lib/api";
+import { api, type GateDetail, type UsageDetail } from "@/lib/api";
 import { fullDate } from "@/lib/format";
 
 const ROUTE: Record<string, { label: string; tone: "neutral" | "brand" | "good" | "warn" }> = {
@@ -17,6 +17,56 @@ const ROUTE: Record<string, { label: string; tone: "neutral" | "brand" | "good" 
 
 const SOURCE: Record<string, string> = { handbook: "Handbook", slack: "Slack", gitlab_issue: "Issue", gitlab_wiki: "Wiki",
   upload: "Document", gitlab_file: "GitLab file" };
+
+const GATE: Record<GateDetail["outcome"], { label: string; tone: "good" | "warn" | "bad" | "neutral" }> = {
+  passed: { label: "Enough evidence", tone: "good" },
+  passed_after_retry: { label: "Enough after a retry", tone: "warn" },
+  failed: { label: "Not enough: couldn't find", tone: "bad" },
+  skipped: { label: "Gate skipped", tone: "neutral" },
+};
+
+const prob = (n: number | null | undefined) => (n === null || n === undefined ? "—" : n.toFixed(2));
+
+// What Jev read and decided, for each try (the first search, and the retry with a rewritten question)
+function GateSection({ gate }: { gate: GateDetail }) {
+  const outcome = GATE[gate.outcome];
+  return (
+    <Section title="Evidence gate (Jev)">
+      <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
+        <Pill tone={outcome.tone}>{outcome.label}</Pill>
+        <span>threshold {gate.threshold} · {gate.model} · {gate.jev_tokens.toLocaleString()} tokens · ${gate.jev_cost_usd.toFixed(6)}</span>
+      </div>
+      {gate.checks.map((c, i) => (
+        <div key={i} className="rounded-xl border border-border p-3">
+          <div className="flex flex-wrap items-baseline gap-2 text-sm">
+            <span className="font-medium">{i === 0 ? "First search" : "Retry"}</span>
+            {c.error ? <span className="text-xs text-red-700 dark:text-red-400">{c.error}</span> : (
+              <span className="text-xs text-muted">
+                enough evidence: <strong className={c.passed ? "text-emerald-700 dark:text-emerald-400" : "text-red-700 dark:text-red-400"}>
+                  {prob(c.enough)}</strong>{c.sent.length ? "" : " (nothing found)"} · {c.seconds} s
+              </span>
+            )}
+          </div>
+          {i > 0 && <p className="mt-1 text-xs text-muted">Rewritten question: <span className="text-foreground">{c.question}</span></p>}
+          {c.sent.length > 0 && (
+            <ol className="mt-2 space-y-1 text-xs">
+              {c.sent.map((s, n) => (
+                <li key={s.n} className="flex gap-2">
+                  <span className="w-10 shrink-0 font-semibold tabular-nums">{prob(c.per_source[n])}</span>
+                  <span className="min-w-0 truncate" title={s.text}>[{s.n}] {s.title} <span className="text-muted">· {SOURCE[s.type] ?? s.type}{s.date ? ` · ${s.date}` : ""}</span></span>
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
+      ))}
+      <p className="text-xs text-muted">
+        Jev reads the question with the start of each source, and gives the probability that together they are enough to answer and that
+        each source helps. Hover a source to see the text Jev read.
+      </p>
+    </Section>
+  );
+}
 
 const score = (n: number | null, digits = 3) => (n === null || n === undefined ? "—" : n.toFixed(digits));
 
@@ -87,7 +137,11 @@ export function QueryInspector({ id, onClose }: { id: number; onClose: () => voi
               {detail.search_question && detail.search_question !== detail.question && (
                 <Section title="Searched for">
                   <p className="rounded-lg bg-navy/5 px-3 py-2 text-sm">{detail.search_question}</p>
-                  <p className="text-xs text-muted">The router rewrote the message so it stands on its own (a follow-up, or the facts an action needed).</p>
+                  <p className="text-xs text-muted">
+                    {detail.details.gate?.checks.length === 2
+                      ? "The first search didn't have enough evidence, so GPT rewrote the question and GitMore searched again."
+                      : "The router rewrote the message so it stands on its own (a follow-up, or the facts an action needed)."}
+                  </p>
                 </Section>
               )}
 
@@ -100,6 +154,8 @@ export function QueryInspector({ id, onClose }: { id: number; onClose: () => voi
                   <p className="text-sm text-muted">{detail.details.action.summary}</p>
                 </Section>
               )}
+
+              {detail.details.gate && <GateSection gate={detail.details.gate} />}
 
               <Section title={`Chunks found (${chunks.length})`}>
                 {detail.route === null ? (

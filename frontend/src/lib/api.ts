@@ -165,6 +165,10 @@ export type RagSettings = {
   price_input_per_m: number;
   price_output_per_m: number;
   answer_length: string;
+  gate_enabled: boolean;
+  gate_threshold: number;
+  gate_model: string;
+  gate_price_per_m: number;
   handbook_core_sections: string[];
   handbook_max_age_days: number;
 };
@@ -187,6 +191,27 @@ export type RagSettingsResponse = {
   handbook: { indexed_pages: number; job: HandbookJob };
 };
 
+export type GateCheck = {
+  question: string;
+  enough: number | null;
+  passed: boolean;
+  per_source: (number | null)[];
+  sent: { n: number; type: string; title: string; date: string | null; text: string }[];
+  input_tokens: number;
+  seconds: number;
+  error: string;
+};
+
+export type GateDetail = {
+  outcome: "skipped" | "passed" | "passed_after_retry" | "failed";
+  threshold: number;
+  model: string;
+  jev_tokens: number;
+  jev_cost_usd: number;
+  rewrite_tokens: [number, number];
+  checks: GateCheck[];
+};
+
 export type UsageDetail = {
   id: number;
   user: string | null;
@@ -203,7 +228,7 @@ export type UsageDetail = {
   seconds: number;
   trace_url: string | null;
   created_at: string;
-  details: { chunks?: InspectedChunk[]; action?: { tool: string; server: string; summary: string; target?: string } };
+  details: { chunks?: InspectedChunk[]; gate?: GateDetail; action?: { tool: string; server: string; summary: string; target?: string } };
 };
 
 export type SourceSummary = { source: string; name: string; documents: number; last_updated: string | null };
